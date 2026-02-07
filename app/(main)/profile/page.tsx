@@ -131,7 +131,6 @@ export default async function ProfilePage({ searchParams }: Props) {
           </Link>
         }
       />
-
         <section className="rounded-[32px] bg-white p-8 shadow-sm">
           <div className="flex flex-col gap-6 md:flex-row md:items-center">
             <div className="h-28 w-28 rounded-full bg-[#d9d9d9] flex items-center justify-center text-4xl text-black/70">

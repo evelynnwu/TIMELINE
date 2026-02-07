@@ -30,7 +30,11 @@ export default function CreateDropdown() {
 
   function handleModalChoice(type: 'image' | 'essay') {
     setShowPostModal(false);
-    router.push(`/upload?type=${type}`);
+    if (type === 'essay') {
+      router.push('/write');
+    } else {
+      router.push('/upload');
+    }
   }
 
   return (
