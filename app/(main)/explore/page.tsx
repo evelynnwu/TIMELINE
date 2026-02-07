@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import ExploreFeed from "./explore-feed";
+import PortfolioCard from "@/app/components/portfolio-card";
 
 export default async function ExplorePage({
   searchParams,
@@ -18,7 +19,7 @@ export default async function ExplorePage({
   const { data: currentProfile } = user
     ? await supabase
         .from("profiles")
-        .select("id, username, display_name, avatar_url")
+        .select("id, username, display_name, avatar_url, bio")
         .eq("id", user.id)
         .single()
     : { data: null };
@@ -162,52 +163,7 @@ export default async function ExplorePage({
   return (
     <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)_240px]">
           <aside className="hidden lg:flex lg:flex-col lg:gap-6">
-            <div className="rounded-2xl bg-[#b0b0b0] p-2 shadow-sm">
-              <div className="relative overflow-hidden rounded-xl bg-white">
-                <div className="h-14 bg-slate-400" />
-                <div className="h-14 bg-slate-300" />
-                <div className="absolute left-1/2 top-14 -translate-x-1/2 -translate-y-1/2">
-                  {currentProfile?.avatar_url ? (
-                    <img
-                      src={currentProfile.avatar_url}
-                      alt={displayName}
-                      className="h-20 w-20 rounded-full border-4 border-white object-cover shadow-md"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="h-20 w-20 rounded-full border-4 border-white bg-slate-200 flex items-center justify-center text-2xl text-slate-600 shadow-md">
-                      {avatarLetter}
-                    </div>
-                  )}
-                </div>
-                <div className="flex justify-center pb-3 pt-12">
-                  {currentProfile?.username ? (
-                    <Link
-                      href={`/${currentProfile.username}`}
-                      className="rounded-full bg-slate-200 px-6 py-1.5 text-sm shadow-sm hover:bg-slate-300 transition-colors"
-                    >
-                      portfolio
-                    </Link>
-                  ) : (
-                    <span className="rounded-full bg-slate-200 px-6 py-1.5 text-sm shadow-sm">
-                      portfolio
-                    </span>
-                  )}
-                </div>
-                {user && (
-                  <div className="flex justify-center gap-6 pb-3 text-sm">
-                    <div className="text-center">
-                      <p className="font-medium text-black/80">{followerCount}</p>
-                      <p className="text-xs text-black/50">followers</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-medium text-black/80">{followingCount}</p>
-                      <p className="text-xs text-black/50">following</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            <PortfolioCard profile={currentProfile} />
 
             <div className="space-y-3 text-sm">
               <p className="text-black/70">following</p>
