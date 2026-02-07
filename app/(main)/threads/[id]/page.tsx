@@ -75,16 +75,19 @@ export default async function ThreadPage({ params }: ThreadPageProps) {
   const { data: currentProfile } = user
     ? await supabase
         .from("profiles")
-        .select("id, username, display_name, avatar_url")
+        .select("id, username, display_name, avatar_url, bio")
         .eq("id", user.id)
         .single()
     : { data: null };
 
-  const { data: threadLinks } = await supabase
-    .from("threads")
-    .select("id, name")
-    .order("created_at", { ascending: false })
-    .limit(3);
+  const { data: threadLinks } = user
+    ? await supabase
+        .from("user_threads")
+        .select("thread:threads(id, name)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(6)
+    : { data: [] as { thread: { id: string; name: string | null } | null }[] };
 
   const { data: featuredLinks } = await supabase
     .from("work_threads")
@@ -194,11 +197,16 @@ export default async function ThreadPage({ params }: ThreadPageProps) {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto grid w-full max-w-none grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)_360px] lg:pl-8 lg:pr-6">
-        <ThreadLeftSidebar
-          profile={currentProfile}
-          threads={threadLinks || []}
-        />
+      <div className="mx-auto grid w-full max-w-none grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-[200px_minmax(0,1fr)_360px] lg:pl-3 lg:pr-6">
+      <ThreadLeftSidebar
+        profile={currentProfile}
+        threads={(threadLinks || [])
+          .map((item) => item.thread)
+          .filter(
+            (thread): thread is { id: string; name: string | null } =>
+              Boolean(thread)
+          )}
+      />
 
         <section className="space-y-8">
           <div className="rounded-[32px] bg-white p-8 shadow-sm">
