@@ -29,15 +29,8 @@ export default function RootLayout({
 }): JSX.Element {
   return (
     <html lang="en">
-<<<<<<< Updated upstream
-      <body
-        className={`${inter.className} ${jetbrainsMono.variable} ${notoSerifKR.variable}`}
-      >
-        {children}
-=======
       <body className={inter.className}>
         <AmplifyProvider>{children}</AmplifyProvider>
->>>>>>> Stashed changes
       </body>
     </html>
   );
