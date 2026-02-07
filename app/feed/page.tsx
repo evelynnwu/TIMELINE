@@ -78,9 +78,9 @@ export default async function FeedPage() {
             </Link>
             <Link
               href="/upload"
-              className="px-4 py-1.5 bg-foreground text-background rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+              className="flex items-center gap-1 px-4 py-1.5 bg-foreground text-background rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
             >
-              Upload
+              <span>+</span> New
             </Link>
             <form action="/auth/signout" method="POST">
               <button
@@ -103,29 +103,39 @@ export default async function FeedPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {sortedWorks.map((work) => {
               const isFollowed = followingIds.has(work.author_id);
+              const isEssay = work.work_type === "essay";
               return (
                 <article
                   key={work.id}
                   className="border border-border rounded-lg overflow-hidden bg-card"
                 >
-                  <div className="aspect-square relative">
-                    {work.image_url && (
-                      <img
-                        src={work.image_url}
-                        alt={work.title}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    )}
-                  </div>
+                  <Link href={`/work/${work.id}`} className="block">
+                    <div className="aspect-square relative">
+                      {work.image_url && (
+                        <img
+                          src={work.image_url}
+                          alt={work.title}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      )}
+                      {isEssay && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-xs font-medium rounded">
+                          Essay
+                        </span>
+                      )}
+                    </div>
+                  </Link>
                   <div className="p-4">
-                    <h2 className="font-medium truncate">{work.title}</h2>
-                    {work.description && (
+                    <Link href={`/work/${work.id}`}>
+                      <h2 className="font-medium truncate hover:underline">{work.title}</h2>
+                    </Link>
+                    {work.description && !isEssay && (
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                         {work.description}
                       </p>
                     )}
                     <Link
-                      href={work.author?.username ? `/profile/${work.author.username}` : "#"}
+                      href={work.author?.username ? `/${work.author.username}` : "#"}
                       className="flex items-center gap-2 mt-3 group"
                     >
                       {work.author?.avatar_url ? (
