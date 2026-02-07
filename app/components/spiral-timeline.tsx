@@ -48,10 +48,10 @@ export default function SpiralTimeline({ works }: SpiralTimelineProps) {
 
   // Spiral positions for works (adjusted based on scroll)
   const getSpiralPosition = (index: number, total: number) => {
-    const angle = (index / total) * Math.PI * 4; // 2 full rotations
-    const radius = 150 + (index / total) * 100; // Expanding radius
+    const angle = (index / total) * Math.PI * 6; // 3 full rotations for more spiral
+    const radius = 150 + (index / total) * 120; // Expanding radius
     const x = Math.cos(angle) * radius;
-    const y = index * 150; // Vertical spacing
+    const y = index * 200; // More vertical spacing
 
     return { x, y, angle };
   };
@@ -67,9 +67,11 @@ export default function SpiralTimeline({ works }: SpiralTimelineProps) {
     >
       {/* Spline 3D Spiral */}
       <div
-        className="absolute left-1/2 top-0 w-[600px] h-full -translate-x-1/2 pointer-events-none"
+        className="absolute left-1/2 w-[600px] pointer-events-none"
         style={{
-          transform: `translateX(-50%) translateY(${-scrollProgress * 200}px)`,
+          top: "200px", // Start lower
+          height: `${works.length * 200 + 800}px`, // Height scales with number of works
+          transform: `translateX(-60%) translateY(${-scrollProgress * (works.length * 50)}px)`, // More centered and continuous scroll
           transition: "transform 0.1s ease-out",
         }}
       >
@@ -91,9 +93,9 @@ export default function SpiralTimeline({ works }: SpiralTimelineProps) {
               key={work.id}
               className="absolute flex items-center gap-4"
               style={{
-                top: `${position.y}px`,
-                left: isLeft ? "10%" : "auto",
-                right: isLeft ? "auto" : "10%",
+                top: `${position.y + 300}px`, // Offset to align with spiral starting lower
+                left: isLeft ? "15%" : "auto",
+                right: isLeft ? "auto" : "15%",
                 opacity: Math.max(0, 1 - Math.abs(position.y - scrollProgress * 1000) / 500),
                 transform: `scale(${Math.max(0.8, 1 - Math.abs(position.y - scrollProgress * 1000) / 1000)})`,
                 transition: "opacity 0.3s ease-out, transform 0.3s ease-out",
@@ -137,7 +139,7 @@ export default function SpiralTimeline({ works }: SpiralTimelineProps) {
       </div>
 
       {/* Padding at bottom for scroll */}
-      <div style={{ height: `${works.length * 150 + 500}px` }} />
+      <div style={{ height: `${works.length * 200 + 800}px` }} />
     </div>
   );
 }
