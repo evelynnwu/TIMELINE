@@ -1,21 +1,17 @@
 import Link from "next/link";
 import { Star } from "lucide-react";
-import { DraggableTagline } from "@/components/draggable-tagline";
-import { SplineBackground } from "@/components/spline-background";
+import { HomeClient } from "@/components/home-client";
 
 export default function HomePage(): JSX.Element {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row relative">
-      {/* Spline 3D background */}
-      <SplineBackground />
-
       {/* Left section — logo + tagline */}
       <div className="flex-1 flex flex-col justify-between p-8 sm:p-12 relative z-10">
         <h1 className="font-[family-name:var(--font-jetbrains-mono)] text-[#484545] text-5xl sm:text-7xl lg:text-[128px] leading-none">
           *-timeline
         </h1>
 
-        <DraggableTagline />
+        <HomeClient />
       </div>
 
       {/* Right panel — CTA + buttons */}
@@ -41,7 +37,7 @@ export default function HomePage(): JSX.Element {
             log in
           </Link>
         </div>
-      </div>\
+      </div>
     </div>
   );
 }
