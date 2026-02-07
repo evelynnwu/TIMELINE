@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Avatar } from "@/components/avatar";
 
 interface Props {
   searchParams: Promise<{ tab?: string }>;
@@ -94,189 +93,172 @@ export default async function ProfilePage({ searchParams }: Props) {
     .select("*", { count: "exact", head: true })
     .eq("follower_id", user.id);
 
+  const { data: threads } = await supabase
+    .from("threads")
+    .select("id, name")
+    .order("created_at", { ascending: false })
+    .limit(3);
+
   const displayWorks = activeTab === "saved" ? savedWorks : works;
   const postsCount = works?.length || 0;
-  const threadNames = Array.from(
-    new Set(
-      [
-        ...(works
-          ?.map((work) => work.primary_interest?.name)
-          .filter(Boolean) || []),
-        ...(savedWorks
-          ?.map((work) => work.primary_interest?.name)
-          .filter(Boolean) || []),
-      ].filter(Boolean)
-    )
-  );
+  const displayName = profile?.display_name || "Anonymous Artist";
+  const avatarInitial = (profile?.display_name || user.email || "A")[0]?.toUpperCase();
+  const threadItems = threads?.map((thread) => thread.name) || [];
 
   return (
-    <div className="min-h-screen bg-[#d9d9d9]">
-      <div className="max-w-6xl mx-auto px-6 py-10">
-        <div className="flex gap-10">
-          <aside className="w-56 shrink-0 hidden lg:block">
-            <div className="text-3xl font-mono mb-8">✳︎ –</div>
-            <div className="font-mono text-sm text-foreground/80 mb-4">
-              following threads
+    <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <aside className="hidden lg:flex lg:flex-col lg:justify-between bg-[#d9d9d9] pr-4">
+          <div className="pt-10">
+            <div className="flex items-center gap-5 text-5xl text-black">
+              <span>✱</span>
+              <span className="translate-y-1">—</span>
             </div>
-            <div className="space-y-3 font-mono text-sm">
-              {threadNames.length > 0 ? (
-                threadNames.map((name) => (
-                  <div key={name} className="text-foreground/90">
-                    *-{name.toLowerCase()}
-                  </div>
-                ))
-              ) : (
-                <div className="text-foreground/60">No threads yet.</div>
-              )}
-            </div>
-          </aside>
-
-          <section className="flex-1 bg-white rounded-[32px] shadow-sm border border-black/5 px-8 py-10">
-            <div className="flex flex-col md:flex-row md:items-start gap-8">
-              <div className="flex items-start gap-6 flex-1">
-                <div className="rounded-full bg-[#d9d9d9] p-4">
-                  <Avatar
-                    src={profile?.avatar_url}
-                    alt={profile?.display_name || "Avatar"}
-                    fallback={profile?.display_name || user.email || "?"}
-                    size="xl"
-                  />
-                </div>
-
-                <div className="flex-1">
-                  <h1 className="text-3xl font-mono">
-                    {profile?.display_name || "Anonymous Artist"}
-                  </h1>
-                  {profile?.username && (
-                    <p className="text-muted-foreground font-mono mt-2">
-                      @{profile.username}
-                    </p>
-                  )}
-                  {profile?.bio && (
-                    <p className="mt-3 text-sm text-foreground/80">
-                      {profile.bio}
-                    </p>
-                  )}
-
-                  <div className="flex flex-wrap gap-6 mt-4 text-sm font-mono">
-                    <span>
-                      <strong>{postsCount}</strong> posts
-                    </span>
-                    <span>
-                      <strong>{followersCount || 0}</strong> followers
-                    </span>
-                    <span>
-                      <strong>{followingCount || 0}</strong> following
-                    </span>
-                  </div>
-
-                  <div className="flex gap-4 mt-3 text-sm text-muted-foreground">
-                    {profile?.location && <span>{profile.location}</span>}
-                    {profile?.website && (
-                      <a
-                        href={profile.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-foreground"
-                      >
-                        {profile.website}
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <Link
-                href="/profile/edit"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border text-sm font-mono hover:bg-muted transition-colors"
-              >
-                Edit profile
-              </Link>
-            </div>
-
-            <div className="mt-10 border-b border-black/10">
-              <div className="flex items-center justify-between font-mono text-sm">
-                <Link
-                  href="/profile"
-                  className={`px-2 pb-3 transition-colors ${
-                    activeTab === "works"
-                      ? "text-foreground border-b-2 border-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  timeline
-                </Link>
-                <span className="px-2 pb-3 text-muted-foreground">
-                  reposts
-                </span>
-                <Link
-                  href="/profile?tab=saved"
-                  className={`px-2 pb-3 transition-colors ${
-                    activeTab === "saved"
-                      ? "text-foreground border-b-2 border-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  saved
-                </Link>
-              </div>
-            </div>
-
-            <div className="mt-8 bg-[#d9d9d9] rounded-[28px] p-6 min-h-[520px]">
-              {displayWorks && displayWorks.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {displayWorks.map((work) => (
-                    <Link
-                      key={work.id}
-                      href={`/work/${work.id}`}
-                      className="aspect-square relative rounded-2xl overflow-hidden border border-black/10 group bg-white"
-                    >
-                      {work.image_url && (
-                        <img
-                          src={work.image_url}
-                          alt={work.title}
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-                      )}
-                      {(work.primary_interest?.name ||
-                        work.work_type === "essay") && (
-                        <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-xs font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          {work.primary_interest?.name || "Essay"}
-                        </span>
-                      )}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                        <p className="text-white text-sm font-medium truncate">
-                          {work.title}
-                        </p>
-                      </div>
-                    </Link>
+            <div className="mt-8 space-y-3 text-sm text-black/80">
+              <p className="tracking-wide">following threads</p>
+              {threadItems.length > 0 ? (
+                <ul className="space-y-2 text-black/80">
+                  {threadItems.map((thread) => (
+                    <li key={thread}>*-{thread}</li>
                   ))}
-                </div>
+                </ul>
               ) : (
-                <div className="text-center py-16">
-                  {activeTab === "saved" ? (
-                    <p className="text-muted-foreground">
-                      You haven&apos;t saved any works yet.
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-muted-foreground mb-4">
-                        You haven&apos;t created any works yet.
-                      </p>
-                      <Link
-                        href="/upload"
-                        className="inline-block px-6 py-2 bg-foreground text-background rounded-full font-medium hover:opacity-90 transition-opacity"
-                      >
-                        Create Your First Work
-                      </Link>
-                    </>
-                  )}
-                </div>
+                <p className="text-black/50">no threads yet</p>
               )}
             </div>
-          </section>
-        </div>
-      </div>
+          </div>
+
+          <div className="pb-10">
+            <Link
+              href="/profile/edit"
+              className="inline-flex items-center gap-2 rounded-full bg-[#bcbcbc] px-4 py-2 text-xs shadow-sm"
+            >
+              <span>⚙</span>
+              <span>Settings</span>
+            </Link>
+          </div>
+        </aside>
+
+        <section className="rounded-[32px] bg-white p-8 shadow-sm">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center">
+            <div className="h-28 w-28 rounded-full bg-[#d9d9d9] flex items-center justify-center text-4xl text-black/70">
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={displayName}
+                  className="h-full w-full rounded-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                avatarInitial
+              )}
+            </div>
+
+            <div className="flex-1 space-y-3">
+              <div className="flex flex-wrap items-center gap-4">
+                <h1 className="text-3xl">{displayName}</h1>
+                <Link
+                  href="/profile/edit"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#dcdcdc] px-4 py-1.5 text-xs shadow-sm"
+                >
+                  <span className="text-xs">✎</span>
+                  <span>Edit profile</span>
+                </Link>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 text-sm text-black/70">
+                {profile?.username && <span>@{profile.username}</span>}
+                <span>•</span>
+                <span>{postsCount} posts</span>
+                <span>{followersCount || 0} followers</span>
+                <span>{followingCount || 0} following</span>
+              </div>
+
+              {profile?.bio && <p className="text-sm text-black/80">{profile.bio}</p>}
+
+              <div className="flex flex-wrap gap-4 text-sm text-black/60">
+                {profile?.location && <span>{profile.location}</span>}
+                {profile?.website && (
+                  <a
+                    href={profile.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-black"
+                  >
+                    {profile.website}
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center gap-10 text-sm">
+            <Link
+              href="/profile"
+              className={`border-b pb-1 ${
+                activeTab === "works" ? "border-black" : "border-transparent text-black/60"
+              }`}
+            >
+              timeline
+            </Link>
+            <span className="text-black/40">reposts</span>
+            <Link
+              href="/profile?tab=saved"
+              className={`border-b pb-1 ${
+                activeTab === "saved" ? "border-black" : "border-transparent text-black/60"
+              }`}
+            >
+              saved
+            </Link>
+          </div>
+
+          <div className="mt-8 rounded-[32px] bg-[#d9d9d9] p-6">
+            {displayWorks && displayWorks.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {displayWorks.map((work) => (
+                  <Link
+                    key={work.id}
+                    href={`/work/${work.id}`}
+                    className="aspect-square relative rounded-2xl overflow-hidden border border-black/10 group bg-white"
+                  >
+                    {work.image_url && (
+                      <img
+                        src={work.image_url}
+                        alt={work.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    )}
+                    {work.work_type === "essay" && (
+                      <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-xs font-medium rounded">
+                        Essay
+                      </span>
+                    )}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                      <p className="text-white text-sm font-medium truncate">
+                        {work.title}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-sm text-black/60">
+                {activeTab === "saved" ? (
+                  <p>You haven&apos;t saved any works yet.</p>
+                ) : (
+                  <>
+                    <p className="mb-4">You haven&apos;t created any works yet.</p>
+                    <Link
+                      href="/upload"
+                      className="inline-block rounded-full bg-[#cfcfcf] px-6 py-2 text-sm"
+                    >
+                      Create Your First Work
+                    </Link>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
     </div>
   );
 }

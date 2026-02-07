@@ -9,79 +9,42 @@ export default async function ExplorePage(): Promise<JSX.Element> {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Fetch all data in parallel
-  const [
-    { data: currentProfile },
-    { data: followingData },
-    { data: works },
-    { data: allProfiles },
-    { data: creatives },
-    { data: threads },
-    { data: following },
-  ] = await Promise.all([
-    user
-      ? supabase
-          .from("profiles")
-          .select("id, username, display_name, avatar_url")
-          .eq("id", user.id)
-          .single()
-      : Promise.resolve({ data: null }),
-    user
-      ? supabase.from("follows").select("following_id").eq("follower_id", user.id)
-      : Promise.resolve({ data: null }),
-    supabase
-      .from("works")
-      .select(
-        `
-        id,
-        title,
-        description,
-        image_url,
-        work_type,
-        content,
-        created_at,
-        author_id,
-        author:profiles!works_author_id_fkey(id, username, display_name, avatar_url),
-        primary_interest:interests!works_primary_interest_id_fkey(id, name, slug)
-      `
-      )
-      .order("created_at", { ascending: false })
-      .limit(100),
-    supabase
-      .from("profiles")
-      .select("id, username, display_name, avatar_url, bio")
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("profiles")
-      .select("id, username, display_name, avatar_url")
-      .order("created_at", { ascending: false })
-      .limit(6),
-    supabase
-      .from("threads")
-      .select("id, name")
-      .order("created_at", { ascending: false })
-      .limit(6),
-    user
-      ? supabase
-          .from("follows")
-          .select(
-            "following:profiles!follows_following_id_fkey(id, username, display_name, avatar_url)"
-          )
-          .eq("follower_id", user.id)
-          .limit(6)
-      : Promise.resolve({
-          data: [] as {
-            following: {
-              id: string;
-              username: string | null;
-              display_name: string | null;
-              avatar_url: string | null;
-            } | null;
-          }[],
-        }),
-  ]);
+  // Get current user's profile (also fetched in Header)
+  const { data: currentProfile } = user
+    ? await supabase
+        .from("profiles")
+        .select("id, username, display_name, avatar_url")
+        .eq("id", user.id)
+        .single()
+    : { data: null };
+
+  // Get list of users the current user follows
+  const { data: followingData } = user
+    ? await supabase
+        .from("follows")
+        .select("following_id")
+        .eq("follower_id", user.id)
+    : { data: null };
 
   const followingIds = new Set(followingData?.map((f) => f.following_id) || []);
+
+  const { data: works } = await supabase
+    .from("works")
+    .select(
+      `
+      id,
+      title,
+      description,
+      image_url,
+      work_type,
+      content,
+      created_at,
+      author_id,
+      author:profiles!works_author_id_fkey(id, username, display_name, avatar_url)
+    `
+    )
+    .order("created_at", { ascending: false })
+    .limit(100);
 
   // Sort works: followed users first, then by date
   const sortedWorks = works?.sort((a, b) => {
@@ -93,6 +56,28 @@ export default async function ExplorePage(): Promise<JSX.Element> {
 
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
+
+  const { data: creatives } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, avatar_url")
+    .order("created_at", { ascending: false })
+    .limit(6);
+
+  const { data: threads } = await supabase
+    .from("threads")
+    .select("id, name")
+    .order("created_at", { ascending: false })
+    .limit(6);
+
+  const { data: following } = user
+    ? await supabase
+        .from("follows")
+        .select(
+          "following:profiles!follows_following_id_fkey(id, username, display_name, avatar_url)"
+        )
+        .eq("follower_id", user.id)
+        .limit(6)
+    : { data: [] as { following: { id: string; username: string | null; display_name: string | null; avatar_url: string | null } | null }[] };
 
   const displayName =
     currentProfile?.display_name || currentProfile?.username || "guest";
@@ -120,8 +105,7 @@ export default async function ExplorePage(): Promise<JSX.Element> {
       ) || [];
 
   return (
-    <div className="bg-[#d9d9d9] text-[#1b1b1b] font-mono">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)_240px]">
+    <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)_240px]">
           <aside className="hidden lg:flex lg:flex-col lg:gap-6">
             <div className="rounded-2xl bg-[#d9d9d9] p-4 shadow-sm">
               <div className="relative overflow-hidden rounded-2xl bg-[#f2f2f2]">
@@ -185,12 +169,85 @@ export default async function ExplorePage(): Promise<JSX.Element> {
             </div>
           </aside>
 
-          <ExploreFeed
-            works={workItems}
-            profiles={allProfiles || []}
-            followingIds={Array.from(followingIds)}
-            isAuthenticated={!!user}
-          />
+          <section className="space-y-8">
+            {workItems.length > 0 ? (
+              workItems.map((work) => {
+                const author = work.author;
+                const authorName =
+                  author?.display_name ||
+                  (author?.username ? `@${author.username}` : "anonymous");
+                const authorInitial = authorName.charAt(0).toUpperCase();
+                const isFollowed = followingIds.has(work.author_id);
+
+                return (
+                  <article key={work.id} className="overflow-hidden rounded-xl bg-white shadow-md">
+                    <Link href={`/work/${work.id}`} className="block">
+                      {work.image_url ? (
+                        <img
+                          src={work.image_url}
+                          alt={work.title || "Artwork"}
+                          className="h-80 w-full object-cover hover:opacity-95 transition-opacity"
+                        />
+                      ) : (
+                        <div className="p-6 text-sm text-black/70 hover:bg-black/5 transition-colors">
+                          <p className="text-base text-black/80">
+                            {work.title || "Untitled"}
+                          </p>
+                          {work.description && (
+                            <p className="mt-2 text-black/60">
+                              {work.description}
+                            </p>
+                          )}
+                          {work.work_type === "essay" && work.content && (
+                            <p className="mt-2 line-clamp-3 text-black/50">
+                              {work.content}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </Link>
+                    <div className="flex items-center justify-between border-t border-black/10 p-4 text-sm">
+                      <Link
+                        href={author?.username ? `/${author.username}` : "#"}
+                        className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                      >
+                        {author?.avatar_url ? (
+                          <img
+                            src={author.avatar_url}
+                            alt={authorName}
+                            className="h-10 w-10 rounded-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-[#e6e6e6] flex items-center justify-center">
+                            {authorInitial}
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-black/80">{authorName}</p>
+                          {work.title && work.image_url && (
+                            <p className="text-black/60">{work.title}</p>
+                          )}
+                        </div>
+                      </Link>
+                      {isFollowed && (
+                        <span className="text-xs text-black/50 bg-black/5 px-2 py-1 rounded-full">
+                          Following
+                        </span>
+                      )}
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <article className="rounded-xl bg-white p-6 shadow-md text-sm text-black/60">
+                No works yet.{" "}
+                <Link href="/upload" className="underline hover:text-black">
+                  Be the first to share!
+                </Link>
+              </article>
+            )}
+          </section>
 
           <aside className="hidden lg:flex lg:flex-col lg:gap-10">
             <div className="space-y-4">
@@ -246,7 +303,6 @@ export default async function ExplorePage(): Promise<JSX.Element> {
               )}
             </div>
           </aside>
-      </div>
     </div>
   );
 }
