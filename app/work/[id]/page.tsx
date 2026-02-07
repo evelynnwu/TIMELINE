@@ -79,7 +79,11 @@ export default async function WorkPage({ params }: Props) {
       .order("created_at", { ascending: false });
 
     if (commentsData) {
-      comments = commentsData as typeof comments;
+      // Transform data - Supabase returns author as array
+      comments = commentsData.map((comment) => ({
+        ...comment,
+        author: Array.isArray(comment.author) ? comment.author[0] : comment.author,
+      }));
     }
   }
 

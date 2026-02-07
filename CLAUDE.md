@@ -439,6 +439,8 @@ We're in **Phase 1**. Focus on:
 8. ✅ Feed with follow prioritization
 9. ✅ AWS Amplify Storage migration
 
+BEFORE TESTING make sure types compile: px tsc --noEmit 2>&1 | head -100
+
 **Completed in this phase:**
 
 - Supabase project: `oaooikqeqijrlfzdwdfs.supabase.co`

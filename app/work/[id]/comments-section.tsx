@@ -89,8 +89,14 @@ export function CommentsSection({
 
       if (error) throw error;
 
+      // Transform the data - Supabase returns author as array
+      const addedComment: Comment = {
+        ...data,
+        author: Array.isArray(data.author) ? data.author[0] : data.author,
+      };
+
       // Add new comment to the top of the list
-      setComments([data as Comment, ...comments]);
+      setComments([addedComment, ...comments]);
       setNewComment("");
       router.refresh();
     } catch (error) {
