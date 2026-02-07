@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 function LoginContent(): JSX.Element {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
-  const redirect = searchParams.get("redirect") ?? "/feed";
+  const redirect = searchParams.get("redirect") ?? "/explore";
 
   const handleOAuthLogin = async (provider: "google") => {
     const supabase = createClient();

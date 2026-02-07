@@ -46,7 +46,7 @@ export default function NewUserPage() {
 
       // If user already has username, redirect to feed
       if (profile?.username) {
-        router.push("/feed");
+        router.push("/explore");
         return;
       }
 
@@ -190,7 +190,7 @@ export default function NewUserPage() {
       }
 
       // Redirect to feed
-      router.push("/feed");
+      router.push("/explore");
     } catch (error) {
       console.error("Error saving profile:", error);
       alert("Something went wrong. Please try again.");

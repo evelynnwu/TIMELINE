@@ -16,6 +16,16 @@ export default async function ExplorePage(): Promise<JSX.Element> {
         .single()
     : { data: null };
 
+  // Get list of users the current user follows
+  const { data: followingData } = user
+    ? await supabase
+        .from("follows")
+        .select("following_id")
+        .eq("follower_id", user.id)
+    : { data: null };
+
+  const followingIds = new Set(followingData?.map((f) => f.following_id) || []);
+
   const { data: works } = await supabase
     .from("works")
     .select(
@@ -32,7 +42,18 @@ export default async function ExplorePage(): Promise<JSX.Element> {
     `
     )
     .order("created_at", { ascending: false })
-    .limit(9);
+    .limit(100);
+
+  // Sort works: followed users first, then by date
+  const sortedWorks = works?.sort((a, b) => {
+    const aFollowed = followingIds.has(a.author_id);
+    const bFollowed = followingIds.has(b.author_id);
+
+    if (aFollowed && !bFollowed) return -1;
+    if (!aFollowed && bFollowed) return 1;
+
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   const { data: creatives } = await supabase
     .from("profiles")
@@ -63,14 +84,21 @@ export default async function ExplorePage(): Promise<JSX.Element> {
   const threadItems =
     threads?.map((thread) => thread.name?.trim()).filter(Boolean) || [];
 
-  const workItems = works || [];
+  // Normalize author field - Supabase can return single object or array
+  const workItems = (sortedWorks || []).map((work) => ({
+    ...work,
+    author: Array.isArray(work.author) ? work.author[0] : work.author,
+  }));
   const creativeItems = creatives || [];
   const followingItems =
     following
-      ?.map((item) => item.following)
+      ?.map((item) => {
+        const f = item.following;
+        return Array.isArray(f) ? f[0] : f;
+      })
       .filter(
-        (profile): profile is NonNullable<typeof profile> =>
-          profile !== null
+        (profile): profile is { id: string; username: string | null; display_name: string | null; avatar_url: string | null } =>
+          profile !== null && profile !== undefined
       ) || [];
 
   return (
@@ -82,10 +110,13 @@ export default async function ExplorePage(): Promise<JSX.Element> {
               <span className="text-4xl leading-none">✱</span>
               <span className="text-4xl leading-none">—</span>
             </div>
-            <button className="flex items-center gap-2 rounded-full border border-black/40 bg-[#e6e6e6] px-4 py-1.5 text-sm shadow-sm">
+            <Link
+              href="/upload"
+              className="flex items-center gap-2 rounded-full border border-black/40 bg-[#e6e6e6] px-4 py-1.5 text-sm shadow-sm hover:bg-[#dcdcdc] transition-colors"
+            >
               <span className="text-base">+</span>
               <span>create</span>
-            </button>
+            </Link>
           </div>
 
           <div className="flex items-center rounded-full bg-white px-2 py-1 shadow-sm">
@@ -102,6 +133,35 @@ export default async function ExplorePage(): Promise<JSX.Element> {
               className="w-48 bg-transparent text-sm outline-none placeholder:text-black/40"
             />
             <span className="text-black/60">⌕</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {user && currentProfile?.username && (
+              <Link
+                href={`/${currentProfile.username}`}
+                className="rounded-full border border-black/40 bg-[#e6e6e6] px-4 py-1.5 text-sm shadow-sm hover:bg-[#dcdcdc] transition-colors"
+              >
+                profile
+              </Link>
+            )}
+            {user && (
+              <form action="/auth/signout" method="POST">
+                <button
+                  type="submit"
+                  className="rounded-full border border-black/40 bg-[#e6e6e6] px-4 py-1.5 text-sm shadow-sm hover:bg-[#dcdcdc] transition-colors"
+                >
+                  logout
+                </button>
+              </form>
+            )}
+            {!user && (
+              <Link
+                href="/login"
+                className="rounded-full border border-black/40 bg-[#e6e6e6] px-4 py-1.5 text-sm shadow-sm hover:bg-[#dcdcdc] transition-colors"
+              >
+                login
+              </Link>
+            )}
           </div>
         </header>
 
@@ -126,13 +186,18 @@ export default async function ExplorePage(): Promise<JSX.Element> {
                   )}
                 </div>
                 <div className="flex justify-center pb-6 pt-10">
-                  <button className="rounded-full bg-[#dcdcdc] px-8 py-2 text-sm shadow-sm">
-                    {currentProfile?.username ? (
-                      <Link href={`/${currentProfile.username}`}>portfolio</Link>
-                    ) : (
-                      "portfolio"
-                    )}
-                  </button>
+                  {currentProfile?.username ? (
+                    <Link
+                      href={`/${currentProfile.username}`}
+                      className="rounded-full bg-[#dcdcdc] px-8 py-2 text-sm shadow-sm hover:bg-[#d0d0d0] transition-colors"
+                    >
+                      portfolio
+                    </Link>
+                  ) : (
+                    <span className="rounded-full bg-[#dcdcdc] px-8 py-2 text-sm shadow-sm">
+                      portfolio
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -143,7 +208,12 @@ export default async function ExplorePage(): Promise<JSX.Element> {
                 <ul className="space-y-2">
                   {followingItems.map((profile) => (
                     <li key={profile.id}>
-                      {profile.username ? `@${profile.username}` : profile.display_name || "unknown"}
+                      <Link
+                        href={profile.username ? `/${profile.username}` : "#"}
+                        className="hover:text-black/80 transition-colors"
+                      >
+                        {profile.username ? `@${profile.username}` : profile.display_name || "unknown"}
+                      </Link>
                     </li>
                   ))}
                 </ul>
@@ -167,58 +237,74 @@ export default async function ExplorePage(): Promise<JSX.Element> {
                   author?.display_name ||
                   (author?.username ? `@${author.username}` : "anonymous");
                 const authorInitial = authorName.charAt(0).toUpperCase();
+                const isFollowed = followingIds.has(work.author_id);
 
                 return (
                   <article key={work.id} className="overflow-hidden rounded-xl bg-white shadow-md">
-                    {work.image_url ? (
-                      <img
-                        src={work.image_url}
-                        alt={work.title || "Artwork"}
-                        className="h-80 w-full object-cover"
-                      />
-                    ) : (
-                      <div className="p-6 text-sm text-black/70">
-                        <p className="text-base text-black/80">
-                          {work.title || "Untitled"}
-                        </p>
-                        {work.description && (
-                          <p className="mt-2 text-black/60">
-                            {work.description}
-                          </p>
-                        )}
-                        {work.work_type === "essay" && work.content && (
-                          <p className="mt-2 line-clamp-3 text-black/50">
-                            {work.content}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-3 border-t border-black/10 p-4 text-sm">
-                      {author?.avatar_url ? (
+                    <Link href={`/work/${work.id}`} className="block">
+                      {work.image_url ? (
                         <img
-                          src={author.avatar_url}
-                          alt={authorName}
-                          className="h-10 w-10 rounded-full object-cover"
-                          referrerPolicy="no-referrer"
+                          src={work.image_url}
+                          alt={work.title || "Artwork"}
+                          className="h-80 w-full object-cover hover:opacity-95 transition-opacity"
                         />
                       ) : (
-                        <div className="h-10 w-10 rounded-full bg-[#e6e6e6] flex items-center justify-center">
-                          {authorInitial}
+                        <div className="p-6 text-sm text-black/70 hover:bg-black/5 transition-colors">
+                          <p className="text-base text-black/80">
+                            {work.title || "Untitled"}
+                          </p>
+                          {work.description && (
+                            <p className="mt-2 text-black/60">
+                              {work.description}
+                            </p>
+                          )}
+                          {work.work_type === "essay" && work.content && (
+                            <p className="mt-2 line-clamp-3 text-black/50">
+                              {work.content}
+                            </p>
+                          )}
                         </div>
                       )}
-                      <div>
-                        <p className="text-black/80">{authorName}</p>
-                        {work.description && (
-                          <p className="text-black/60">{work.description}</p>
+                    </Link>
+                    <div className="flex items-center justify-between border-t border-black/10 p-4 text-sm">
+                      <Link
+                        href={author?.username ? `/${author.username}` : "#"}
+                        className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                      >
+                        {author?.avatar_url ? (
+                          <img
+                            src={author.avatar_url}
+                            alt={authorName}
+                            className="h-10 w-10 rounded-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-[#e6e6e6] flex items-center justify-center">
+                            {authorInitial}
+                          </div>
                         )}
-                      </div>
+                        <div>
+                          <p className="text-black/80">{authorName}</p>
+                          {work.title && work.image_url && (
+                            <p className="text-black/60">{work.title}</p>
+                          )}
+                        </div>
+                      </Link>
+                      {isFollowed && (
+                        <span className="text-xs text-black/50 bg-black/5 px-2 py-1 rounded-full">
+                          Following
+                        </span>
+                      )}
                     </div>
                   </article>
                 );
               })
             ) : (
               <article className="rounded-xl bg-white p-6 shadow-md text-sm text-black/60">
-                No works yet.
+                No works yet.{" "}
+                <Link href="/upload" className="underline hover:text-black">
+                  Be the first to share!
+                </Link>
               </article>
             )}
           </section>
@@ -249,20 +335,25 @@ export default async function ExplorePage(): Promise<JSX.Element> {
                       item.display_name ||
                       (item.username ? `@${item.username}` : "unknown");
                     return (
-                      <li key={item.id} className="flex items-center gap-3">
-                        {item.avatar_url ? (
-                          <img
-                            src={item.avatar_url}
-                            alt={label}
-                            className="h-8 w-8 rounded-full object-cover"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <span className="h-8 w-8 rounded-full bg-[#d0d0d0] flex items-center justify-center text-xs">
-                            {label.charAt(0).toUpperCase()}
-                          </span>
-                        )}
-                        <span>{label}</span>
+                      <li key={item.id}>
+                        <Link
+                          href={item.username ? `/${item.username}` : "#"}
+                          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                        >
+                          {item.avatar_url ? (
+                            <img
+                              src={item.avatar_url}
+                              alt={label}
+                              className="h-8 w-8 rounded-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <span className="h-8 w-8 rounded-full bg-[#d0d0d0] flex items-center justify-center text-xs">
+                              {label.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                          <span>{label}</span>
+                        </Link>
                       </li>
                     );
                   })}

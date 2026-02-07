@@ -20,10 +20,10 @@ export default async function MainLayout({
           </Link>
           <nav className="flex items-center gap-6">
             <Link
-              href="/feed"
+              href="/explore"
               className="text-sm text-muted-foreground hover:text-foreground"
             >
-              Feed
+              Explore
             </Link>
             {user && (
               <Link

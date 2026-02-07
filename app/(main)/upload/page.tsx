@@ -203,7 +203,7 @@ export default function NewWorkPage() {
         throw insertError;
       }
 
-      router.push("/feed");
+      router.push("/explore");
       router.refresh();
     } catch (err) {
       console.error("Upload error:", err);

@@ -188,10 +188,10 @@ export default async function WorkPage({ params }: Props) {
       {/* Back link */}
       <div className="mt-12 pt-8 border-t border-border">
         <Link
-          href="/feed"
+          href="/explore"
           className="text-sm text-muted-foreground hover:text-foreground"
         >
-          ← Back to Feed
+          ← Back to Explore
         </Link>
       </div>
     </div>
