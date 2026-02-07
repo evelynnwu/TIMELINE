@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import CreateDropdown from "./create-dropdown";
+import HeaderSearch from "./header-search";
 
 export default async function Header(): Promise<JSX.Element> {
   const supabase = await createClient();
@@ -38,19 +39,15 @@ export default async function Header(): Promise<JSX.Element> {
         >
           explore
         </Link>
-        <button className="rounded-full px-5 py-1 text-sm text-black/60 hover:bg-black/5 transition-colors">
+        <Link
+          href="/expand"
+          className="rounded-full px-5 py-1 text-sm text-black/60 hover:bg-black/5 transition-colors"
+        >
           expand
-        </button>
+        </Link>
       </div>
 
-      <div className="flex items-center gap-3 rounded-full bg-white px-4 py-2 shadow-sm">
-        <input
-          type="text"
-          placeholder="search"
-          className="w-48 bg-transparent text-sm outline-none placeholder:text-black/40"
-        />
-        <span className="text-black/60">⌕</span>
-      </div>
+      <HeaderSearch />
 
       <div className="flex items-center gap-3">
         {user && currentProfile?.username && (

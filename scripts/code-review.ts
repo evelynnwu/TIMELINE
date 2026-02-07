@@ -2,6 +2,14 @@
 /**
  * Automated code review using Dedalus + Claude
  * Reviews staged git changes for security, conventions, and best practices
+ *
+ * Usage:
+ *   npm run review              # Run review on staged changes
+ *   npm run review -- --skip    # Skip review (emergency bypass)
+ *   SKIP_REVIEW=true npm run review  # Skip via environment variable
+ *
+ * Flags:
+ *   --skip, --no-review         Skip the code review (use with caution)
  */
 
 import { config } from 'dotenv';
@@ -94,6 +102,8 @@ CRITICAL CHECKS (only build-failing issues):
 - Invalid SQL syntax in migrations
 - Invalid JSON in config files
 - TypeScript errors that would fail build
+- Accessing properties on potentially null Supabase query results without null checks (e.g., data.id when data could be null from .single())
+- NOTE: Field/type renames (e.g., primary_interest → primary_thread) are NOT critical if all references are updated consistently and TypeScript compiles
 
 WARNING CHECKS (everything else - security, best practices, etc.):
 - Security issues (SQL injection, XSS, auth bypasses)
@@ -122,6 +132,7 @@ SQL-SPECIFIC CHECKS:
 - Is 'on delete cascade' used appropriately?
 - Are migrations reversible?
 - Standard columns included: id, created_at, updated_at?
+- CRITICAL: 'ON CONFLICT (column)' requires a UNIQUE constraint/index on that column, otherwise the migration will fail at runtime
 ` : ''}
 
 ${isComponent ? `
@@ -197,9 +208,19 @@ IMPORTANT:
 }
 
 async function main() {
-  // Allow bypass in emergencies (use with caution!)
-  if (process.env.SKIP_REVIEW === 'true') {
-    console.log('⚠️  Code review SKIPPED (SKIP_REVIEW=true)');
+  // Check for skip flags
+  const skipFlag = process.argv.includes('--skip') || process.argv.includes('--no-review');
+  const skipEnv = process.env.SKIP_REVIEW === 'true';
+
+  if (skipFlag || skipEnv) {
+    console.log('⚠️  Code review SKIPPED');
+    if (skipFlag) {
+      console.log('   (via command-line flag)');
+    }
+    if (skipEnv) {
+      console.log('   (via SKIP_REVIEW environment variable)');
+    }
+    console.log('   Use with caution - bypassing security checks!\n');
     return;
   }
 
