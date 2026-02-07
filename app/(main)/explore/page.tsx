@@ -84,7 +84,12 @@ export default async function ExplorePage(): Promise<JSX.Element> {
   const avatarLetter = displayName.charAt(0).toUpperCase();
 
   const threadItems =
-    threads?.map((thread) => thread.name?.trim()).filter(Boolean) || [];
+    threads
+      ?.map((thread) => ({
+        id: thread.id,
+        name: thread.name?.trim() || null,
+      }))
+      .filter((thread) => thread.name) || [];
 
   // Normalize author and primary_interest fields - Supabase can return single object or array
   const workItems = (sortedWorks || []).map((work) => ({
@@ -255,9 +260,14 @@ export default async function ExplorePage(): Promise<JSX.Element> {
               {threadItems.length > 0 ? (
                 <ul className="space-y-3 text-sm">
                   {threadItems.map((item) => (
-                    <li key={item} className="flex items-center gap-3">
+                    <li key={item.id} className="flex items-center gap-3">
                       <span className="h-8 w-8 rounded-md bg-[#d0d0d0]" />
-                      <span>{item}</span>
+                      <Link
+                        href={`/threads/${item.id}`}
+                        className="hover:text-black/80 transition-colors"
+                      >
+                        {item.name}
+                      </Link>
                     </li>
                   ))}
                 </ul>
