@@ -41,6 +41,11 @@ export interface Work {
   updated_at: string;
   likes_count: number;
   comments_count: number;
+  primary_interest?: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
 }
 
 // AI Detection types

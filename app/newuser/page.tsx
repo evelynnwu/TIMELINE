@@ -1,10 +1,23 @@
-"use client";
+  "use client";
 
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { uploadFileWithPresignedUrl } from "@/lib/amplify/storage";
+
+const TRUSTED_AVATAR_DOMAINS = [
+  "lh3.googleusercontent.com", // Google OAuth
+  "googleusercontent.com",
+];
+
+function isTrustedAvatarUrl(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname;
+    return TRUSTED_AVATAR_DOMAINS.some((domain) => hostname.endsWith(domain));
+  } catch {
+    return false;
+  }
+}
 
 export default function NewUserPage() {
   const router = useRouter();
@@ -139,20 +152,8 @@ export default function NewUserPage() {
     setSaving(true);
 
     try {
-      let finalAvatarUrl = avatarUrl;
-
-      // Upload new avatar if selected
-      if (avatarFile) {
-        const fileExt = avatarFile.name.split(".").pop();
-        const storagePath = `${user.id}/avatar.${fileExt}`;
-
-        try {
-          const uploadResult = await uploadFile(avatarFile, storagePath);
-          finalAvatarUrl = uploadResult.url;
-        } catch {
-          throw new Error("Failed to upload avatar");
-        }
-      }
+      const displayName =
+        [firstName.trim(), lastName.trim()].filter(Boolean).join(" ") || null;
 
       // Update profile
       const { error: updateError } = await supabase
@@ -161,21 +162,21 @@ export default function NewUserPage() {
           username: username.toLowerCase(),
           display_name: displayName,
           bio: bio.trim() || null,
-          avatar_url: avatarUrl,
+          avatar_url: avatarUrl && isTrustedAvatarUrl(avatarUrl) ? avatarUrl : null,
         })
         .eq("id", user.id);
 
       if (updateError) {
-      if (updateError.code === "23505") {
-        setUsernameError("Username already taken");
-        setSaving(false);
-        return;
+        if (updateError.code === "23505") {
+          setUsernameError("Username already taken");
+          setSaving(false);
+          return;
         }
         throw updateError;
       }
 
-      // Redirect to feed
-      router.push("/feed");
+      // Redirect to interests selection
+      router.push("/newuser/interests");
     } catch (error) {
       console.error("Error saving profile:", error);
       alert("Something went wrong. Please try again.");
@@ -196,7 +197,7 @@ export default function NewUserPage() {
   const isValid = username.length >= 3 && !usernameError && !checkingUsername && birthday !== "";
 
   return (
-    <div className="h-screen bg-[#516e73] flex flex-col lg:flex-row overflow-hidden">
+    <div className="min-h-screen bg-[#516e73] flex flex-col lg:flex-row overflow-y-auto">
       {/* Left section — branding + text */}
       <div className="flex-1 flex flex-col justify-between p-8 sm:p-12 lg:p-16">
         <p className="font-[family-name:var(--font-jetbrains-mono)] text-white text-6xl sm:text-8xl lg:text-[128px] leading-none">

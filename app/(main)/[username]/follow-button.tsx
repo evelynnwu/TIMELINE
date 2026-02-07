@@ -1,8 +1,8 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { toggleFollow } from "../explore/actions";
 
 interface FollowButtonProps {
   profileId: string;
@@ -11,66 +11,33 @@ interface FollowButtonProps {
 
 export function FollowButton({ profileId, isFollowing: initialIsFollowing }: FollowButtonProps) {
   const router = useRouter();
-  const supabase = createClient();
-
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-  async function handleToggleFollow() {
-    setIsLoading(true);
+  function handleToggleFollow() {
+    startTransition(() => {
+      void (async () => {
+        const result = await toggleFollow(profileId);
 
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      if (isFollowing) {
-        // Unfollow
-        const { error } = await supabase
-          .from("follows")
-          .delete()
-          .eq("follower_id", user.id)
-          .eq("following_id", profileId);
-
-        if (error) throw error;
-        setIsFollowing(false);
-      } else {
-        // Follow
-        const { error } = await supabase
-          .from("follows")
-          .insert({
-            follower_id: user.id,
-            following_id: profileId,
-          });
-
-        if (error) throw error;
-        setIsFollowing(true);
-      }
-
-      router.refresh();
-    } catch (error) {
-      console.error("Error toggling follow:", error);
-    } finally {
-      setIsLoading(false);
-    }
+        if (result.success) {
+          setIsFollowing(result.isFollowing);
+          router.refresh();
+        }
+      })();
+    });
   }
 
   return (
     <button
       onClick={handleToggleFollow}
-      disabled={isLoading}
+      disabled={isPending}
       className={`px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 ${
         isFollowing
           ? "border border-border hover:bg-muted"
           : "bg-foreground text-background hover:opacity-90"
       }`}
     >
-      {isLoading ? "..." : isFollowing ? "Following" : "Follow"}
+      {isPending ? "..." : isFollowing ? "Following" : "Follow"}
     </button>
   );
 }
