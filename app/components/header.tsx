@@ -39,9 +39,12 @@ export default async function Header(): Promise<JSX.Element> {
         >
           explore
         </Link>
-        <button className="rounded-full px-5 py-1 text-sm text-black/60 hover:bg-black/5 transition-colors">
+        <Link
+          href="/expand"
+          className="rounded-full px-5 py-1 text-sm text-black/60 hover:bg-black/5 transition-colors"
+        >
           expand
-        </button>
+        </Link>
       </div>
 
       <HeaderSearch />
