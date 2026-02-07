@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import SpiralTimeline from "@/app/components/spiral-timeline";
 import ThreadLeftSidebar from "@/app/components/thread-left-sidebar";
 
 interface Props {
@@ -204,12 +203,73 @@ export default async function ProfilePage({ searchParams }: Props) {
             </Link>
           </div>
 
-          {/* Timeline or Grid based on active tab */}
-          {activeTab === "works" ? (
-            <SpiralTimeline works={displayWorks || []} />
-          ) : (
-            <div className="mt-8 rounded-[32px] bg-[#d9d9d9] p-6">
-              {displayWorks && displayWorks.length > 0 ? (
+          <div className="mt-8 rounded-[32px] bg-[#d9d9d9] p-6">
+            {displayWorks && displayWorks.length > 0 ? (
+              activeTab === "works" ? (
+                /* Timeline view for works */
+                <div className="relative pl-8">
+                  {/* Vertical timeline line with gradient fading */}
+                  <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-transparent via-black/30 to-transparent" />
+
+                  {/* Timeline items */}
+                  <div className="space-y-8">
+                    {displayWorks.map((work, index) => {
+                      const isFirst = index === 0;
+                      const isLast = index === displayWorks.length - 1;
+
+                      return (
+                        <div key={work.id} className="relative flex items-start gap-4">
+                          {/* Timeline dot */}
+                          <div className="absolute -left-8 top-4 w-3 h-3 rounded-full bg-black/70 border-2 border-[#d9d9d9]" />
+
+                          {/* Work card */}
+                          <Link
+                            href={`/work/${work.id}`}
+                            className="flex-1 flex gap-4 p-4 bg-white rounded-2xl border border-black/10 hover:shadow-md transition-all group"
+                          >
+                            {/* Thumbnail */}
+                            <div className="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-black/5">
+                              {work.image_url ? (
+                                <img
+                                  src={work.image_url}
+                                  alt={work.title || ""}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <span className="text-xs font-medium text-black/40">Essay</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Work info */}
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-base truncate group-hover:text-black/80">
+                                {work.title}
+                              </h3>
+                              <div className="mt-1 flex items-center gap-2 text-xs text-black/60">
+                                {work.primary_thread?.name && (
+                                  <span className="px-2 py-0.5 bg-black/5 rounded-full">
+                                    {work.primary_thread.name}
+                                  </span>
+                                )}
+                                <span>
+                                  {new Date(work.created_at).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          </Link>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                /* Grid view for saved works */
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                   {displayWorks.map((work) => (
                     <Link
@@ -237,13 +297,25 @@ export default async function ProfilePage({ searchParams }: Props) {
                     </Link>
                   ))}
                 </div>
-              ) : (
-                <div className="text-center py-12 text-sm text-black/60">
+              )
+            ) : (
+              <div className="text-center py-12 text-sm text-black/60">
+                {activeTab === "saved" ? (
                   <p>You haven&apos;t saved any works yet.</p>
-                </div>
-              )}
-            </div>
-          )}
+                ) : (
+                  <>
+                    <p className="mb-4">You haven&apos;t created any works yet.</p>
+                    <Link
+                      href="/upload"
+                      className="inline-block rounded-full bg-[#cfcfcf] px-6 py-2 text-sm"
+                    >
+                      Create Your First Work
+                    </Link>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </section>
     </div>
   );

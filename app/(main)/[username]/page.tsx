@@ -124,32 +124,61 @@ export default async function UserProfilePage({ params }: Props) {
         </h2>
 
         {works && works.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {works.map((work) => (
-              <Link
-                key={work.id}
-                href={`/work/${work.id}`}
-                className="aspect-square relative rounded-lg overflow-hidden border border-border group"
-              >
-                {work.image_url && (
-                  <img
-                    src={work.image_url}
-                    alt={work.title}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                )}
-                {(work.primary_thread?.name || work.work_type === "essay") && (
-                  <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-xs font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    {work.primary_thread?.name || "Essay"}
-                  </span>
-                )}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                  <p className="text-white text-sm font-medium truncate">
-                    {work.title}
-                  </p>
+          <div className="relative pl-8">
+            {/* Vertical timeline line with gradient fading */}
+            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-transparent via-black/30 to-transparent" />
+
+            {/* Timeline items */}
+            <div className="space-y-8">
+              {works.map((work) => (
+                <div key={work.id} className="relative flex items-start gap-4">
+                  {/* Timeline dot */}
+                  <div className="absolute -left-8 top-4 w-3 h-3 rounded-full bg-black/70 border-2 border-[#d9d9d9]" />
+
+                  {/* Work card */}
+                  <Link
+                    href={`/work/${work.id}`}
+                    className="flex-1 flex gap-4 p-4 bg-white rounded-2xl border border-black/10 hover:shadow-md transition-all group"
+                  >
+                    {/* Thumbnail */}
+                    <div className="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-black/5">
+                      {work.image_url ? (
+                        <img
+                          src={work.image_url}
+                          alt={work.title || ""}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-xs font-medium text-black/40">Essay</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Work info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-base truncate group-hover:text-black/80">
+                        {work.title}
+                      </h3>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-black/60">
+                        {work.primary_thread?.name && (
+                          <span className="px-2 py-0.5 bg-black/5 rounded-full">
+                            {work.primary_thread.name}
+                          </span>
+                        )}
+                        <span>
+                          {new Date(work.created_at).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
                 </div>
-              </Link>
-            ))}
+              ))}
+            </div>
           </div>
         ) : (
           <div className="text-center py-12">
