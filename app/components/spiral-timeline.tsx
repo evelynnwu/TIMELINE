@@ -67,7 +67,7 @@ export default function SpiralTimeline({ works }: SpiralTimelineProps) {
     >
       {/* Spline 3D Spiral */}
       <div
-        className="absolute left-1/2 w-[600px] pointer-events-none"
+        className="absolute left-1/2 w-[800px] pointer-events-none overflow-hidden"
         style={{
           top: "200px", // Start lower
           height: `${works.length * 200 + 800}px`, // Height scales with number of works
@@ -75,11 +75,20 @@ export default function SpiralTimeline({ works }: SpiralTimelineProps) {
           transition: "transform 0.1s ease-out",
         }}
       >
-        <Spline
-          scene="/scene.splinecode"
-          onLoad={onSplineLoad}
+        {/* Inner container for zoom/crop */}
+        <div
           className="w-full h-full"
-        />
+          style={{
+            transform: "scale(1.5) translateY(-15%)",
+            transformOrigin: "center center",
+          }}
+        >
+          <Spline
+            scene="/scene.splinecode"
+            onLoad={onSplineLoad}
+            className="w-full h-full"
+          />
+        </div>
       </div>
 
       {/* Timeline content */}
