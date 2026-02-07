@@ -83,56 +83,7 @@ export default async function ProfilePage({ searchParams }: Props) {
   const threadItems = threads?.map((thread) => thread.name) || [];
 
   return (
-    <div className="min-h-screen bg-[#d9d9d9] text-[#1b1b1b] font-mono">
-      <header className="border-b border-black/10">
-        <div className="max-w-6xl mx-auto px-6 py-2 text-sm text-black/70">
-
-        </div>
-        <div className="max-w-6xl mx-auto px-6 pb-4 flex flex-wrap items-center justify-between gap-4">
-          <Link
-            href="/upload"
-            className="flex items-center gap-2 rounded-full border border-black/40 bg-[#e6e6e6] px-4 py-1.5 text-sm shadow-sm"
-          >
-            <span className="text-base">+</span>
-            <span>create</span>
-          </Link>
-
-          <div className="flex items-center rounded-full bg-white px-2 py-1 shadow-sm">
-            <Link
-              href="/explore"
-              className="rounded-full px-5 py-1 text-sm"
-            >
-              explore
-            </Link>
-            <Link
-              href="/feed"
-              className="rounded-full px-5 py-1 text-sm text-black/60"
-            >
-              expand
-            </Link>
-          </div>
-
-          <div className="flex items-center gap-3 rounded-full bg-white px-4 py-2 shadow-sm">
-            <input
-              type="text"
-              placeholder="search"
-              className="w-48 bg-transparent text-sm outline-none placeholder:text-black/40"
-            />
-            <span className="text-black/60">⌕</span>
-          </div>
-
-          <form action="/auth/signout" method="POST">
-            <button
-              type="submit"
-              className="rounded-full border border-black/30 bg-white px-4 py-1.5 text-sm text-black/70 shadow-sm hover:text-black"
-            >
-              sign out
-            </button>
-          </form>
-        </div>
-      </header>
-
-      <main className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="hidden lg:flex lg:flex-col lg:justify-between bg-[#d9d9d9] pr-4">
           <div className="pt-10">
             <div className="flex items-center gap-5 text-5xl text-black">
@@ -285,7 +236,6 @@ export default async function ProfilePage({ searchParams }: Props) {
             )}
           </div>
         </section>
-      </main>
     </div>
   );
 }

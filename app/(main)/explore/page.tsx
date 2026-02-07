@@ -8,6 +8,7 @@ export default async function ExplorePage(): Promise<JSX.Element> {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Get current user's profile (also fetched in Header)
   const { data: currentProfile } = user
     ? await supabase
         .from("profiles")
@@ -102,70 +103,7 @@ export default async function ExplorePage(): Promise<JSX.Element> {
       ) || [];
 
   return (
-    <div className="min-h-screen bg-[#d9d9d9] text-[#1b1b1b]">
-      <div className="font-mono">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-black/20 px-6 py-4">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-4">
-              <span className="text-4xl leading-none">✱</span>
-              <span className="text-4xl leading-none">—</span>
-            </div>
-            <Link
-              href="/upload"
-              className="flex items-center gap-2 rounded-full border border-black/40 bg-[#e6e6e6] px-4 py-1.5 text-sm shadow-sm hover:bg-[#dcdcdc] transition-colors"
-            >
-              <span className="text-base">+</span>
-              <span>create</span>
-            </Link>
-          </div>
-
-          <div className="flex items-center rounded-full bg-white px-2 py-1 shadow-sm">
-            <button className="rounded-full px-5 py-1 text-sm">explore</button>
-            <button className="rounded-full px-5 py-1 text-sm text-black/60">
-              expand
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3 rounded-full bg-white px-4 py-2 shadow-sm">
-            <input
-              type="text"
-              placeholder="search"
-              className="w-48 bg-transparent text-sm outline-none placeholder:text-black/40"
-            />
-            <span className="text-black/60">⌕</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {user && currentProfile?.username && (
-              <Link
-                href={`/${currentProfile.username}`}
-                className="rounded-full border border-black/40 bg-[#e6e6e6] px-4 py-1.5 text-sm shadow-sm hover:bg-[#dcdcdc] transition-colors"
-              >
-                profile
-              </Link>
-            )}
-            {user && (
-              <form action="/auth/signout" method="POST">
-                <button
-                  type="submit"
-                  className="rounded-full border border-black/40 bg-[#e6e6e6] px-4 py-1.5 text-sm shadow-sm hover:bg-[#dcdcdc] transition-colors"
-                >
-                  logout
-                </button>
-              </form>
-            )}
-            {!user && (
-              <Link
-                href="/login"
-                className="rounded-full border border-black/40 bg-[#e6e6e6] px-4 py-1.5 text-sm shadow-sm hover:bg-[#dcdcdc] transition-colors"
-              >
-                login
-              </Link>
-            )}
-          </div>
-        </header>
-
-        <main className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)_240px]">
+    <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)_240px]">
           <aside className="hidden lg:flex lg:flex-col lg:gap-6">
             <div className="rounded-2xl bg-[#d9d9d9] p-4 shadow-sm">
               <div className="relative overflow-hidden rounded-2xl bg-[#f2f2f2]">
@@ -363,8 +301,6 @@ export default async function ExplorePage(): Promise<JSX.Element> {
               )}
             </div>
           </aside>
-        </main>
-      </div>
     </div>
   );
 }
