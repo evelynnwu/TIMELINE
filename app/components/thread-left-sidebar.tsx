@@ -1,66 +1,29 @@
 import Link from "next/link";
+import PortfolioCard, { type PortfolioProfile } from "@/app/components/portfolio-card";
 
 type ThreadLink = {
   id: string;
   name: string | null;
 };
 
-type Profile = {
-  username: string | null;
-  display_name: string | null;
-  avatar_url: string | null;
-};
-
 type ThreadLeftSidebarProps = {
-  profile: Profile | null;
+  profile: PortfolioProfile | null;
   threads: ThreadLink[];
+  footer?: React.ReactNode;
+  className?: string;
 };
 
 export default function ThreadLeftSidebar({
   profile,
   threads,
+  footer,
+  className,
 }: ThreadLeftSidebarProps): JSX.Element {
-  const displayName = profile?.display_name || profile?.username || "guest";
-  const avatarLetter = displayName.charAt(0).toUpperCase();
-
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:gap-6">
-      <div className="rounded-2xl bg-[#d9d9d9] p-4 shadow-sm">
-        <div className="relative overflow-hidden rounded-2xl bg-[#f2f2f2]">
-          <div className="h-24 bg-white" />
-          <div className="h-32 bg-[#9a9a9a]" />
-          <div className="absolute left-1/2 top-16 -translate-x-1/2">
-            {profile?.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={displayName}
-                className="h-24 w-24 rounded-full border-4 border-[#f2f2f2] object-cover"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-[#f2f2f2] bg-[#d8d8d8] text-3xl text-black/70">
-                {avatarLetter}
-              </div>
-            )}
-          </div>
-          <div className="flex justify-center pb-6 pt-10">
-            {profile?.username ? (
-              <Link
-                href={`/${profile.username}`}
-                className="rounded-full bg-[#dcdcdc] px-8 py-2 text-sm shadow-sm hover:bg-[#d0d0d0] transition-colors"
-              >
-                portfolio
-              </Link>
-            ) : (
-              <span className="rounded-full bg-[#dcdcdc] px-8 py-2 text-sm shadow-sm">
-                portfolio
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
+    <aside className={`hidden lg:flex lg:flex-col lg:gap-6 ${className || ""}`}>
+      <PortfolioCard profile={profile} />
 
-      <div className="rounded-2xl bg-[#d9d9d9] p-6 text-black">
+      <div className="text-black">
         <div className="flex items-center gap-3 text-4xl font-[family-name:var(--font-jetbrains-mono)]">
           <span>✱</span>
           <span className="translate-y-1">—</span>
@@ -86,6 +49,8 @@ export default function ThreadLeftSidebar({
           )}
         </div>
       </div>
+
+      {footer ? <div className="mt-auto">{footer}</div> : null}
     </aside>
   );
 }
