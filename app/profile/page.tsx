@@ -70,181 +70,221 @@ export default async function ProfilePage({ searchParams }: Props) {
     .select("*", { count: "exact", head: true })
     .eq("follower_id", user.id);
 
+  const { data: threads } = await supabase
+    .from("threads")
+    .select("id, name")
+    .order("created_at", { ascending: false })
+    .limit(3);
+
   const displayWorks = activeTab === "saved" ? savedWorks : works;
+  const postsCount = works?.length || 0;
+  const displayName = profile?.display_name || "Anonymous Artist";
+  const avatarInitial = (profile?.display_name || user.email || "A")[0]?.toUpperCase();
+  const threadItems = threads?.map((thread) => thread.name) || [];
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold">
-            Artfolio
+    <div className="min-h-screen bg-[#d9d9d9] text-[#1b1b1b] font-mono">
+      <header className="border-b border-black/10">
+        <div className="max-w-6xl mx-auto px-6 py-2 text-sm text-black/70">
+          profile - timeline
+        </div>
+        <div className="max-w-6xl mx-auto px-6 pb-4 flex flex-wrap items-center justify-between gap-4">
+          <Link
+            href="/upload"
+            className="flex items-center gap-2 rounded-full border border-black/40 bg-[#e6e6e6] px-4 py-1.5 text-sm shadow-sm"
+          >
+            <span className="text-base">+</span>
+            <span>create</span>
           </Link>
-          <nav className="flex items-center gap-6">
+
+          <div className="flex items-center rounded-full bg-white px-2 py-1 shadow-sm">
+            <Link
+              href="/explore"
+              className="rounded-full px-5 py-1 text-sm"
+            >
+              explore
+            </Link>
             <Link
               href="/feed"
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className="rounded-full px-5 py-1 text-sm text-black/60"
             >
-              Feed
+              expand
             </Link>
-            <Link
-              href="/profile"
-              className="text-sm text-foreground font-medium"
+          </div>
+
+          <div className="flex items-center gap-3 rounded-full bg-white px-4 py-2 shadow-sm">
+            <input
+              type="text"
+              placeholder="search"
+              className="w-48 bg-transparent text-sm outline-none placeholder:text-black/40"
+            />
+            <span className="text-black/60">⌕</span>
+          </div>
+
+          <form action="/auth/signout" method="POST">
+            <button
+              type="submit"
+              className="rounded-full border border-black/30 bg-white px-4 py-1.5 text-sm text-black/70 shadow-sm hover:text-black"
             >
-              Profile
-            </Link>
-            <Link
-              href="/upload"
-              className="flex items-center gap-1 px-4 py-1.5 bg-foreground text-background rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
-            >
-              <span>+</span> New
-            </Link>
-            <form action="/auth/signout" method="POST">
-              <button
-                type="submit"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Sign out
-              </button>
-            </form>
-          </nav>
+              sign out
+            </button>
+          </form>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="flex items-start gap-6 mb-8">
-          {profile?.avatar_url ? (
-            <img
-              src={profile.avatar_url}
-              alt={profile.display_name || "Avatar"}
-              className="w-24 h-24 rounded-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center">
-              <span className="text-2xl text-muted-foreground">
-                {(profile?.display_name || user.email)?.[0]?.toUpperCase()}
-              </span>
+      <main className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <aside className="hidden lg:flex lg:flex-col lg:justify-between bg-[#d9d9d9] pr-4">
+          <div className="pt-10">
+            <div className="flex items-center gap-5 text-5xl text-black">
+              <span>✱</span>
+              <span className="translate-y-1">—</span>
             </div>
-          )}
-
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">
-              {profile?.display_name || "Anonymous Artist"}
-            </h1>
-            {profile?.username && (
-              <p className="text-muted-foreground">@{profile.username}</p>
-            )}
-            {profile?.bio && <p className="mt-2">{profile.bio}</p>}
-
-            <div className="flex gap-4 mt-3 text-sm">
-              <span>
-                <strong>{followersCount || 0}</strong>{" "}
-                <span className="text-muted-foreground">followers</span>
-              </span>
-              <span>
-                <strong>{followingCount || 0}</strong>{" "}
-                <span className="text-muted-foreground">following</span>
-              </span>
-            </div>
-
-            <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
-              {profile?.location && <span>{profile.location}</span>}
-              {profile?.website && (
-                <a
-                  href={profile.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground"
-                >
-                  {profile.website}
-                </a>
+            <div className="mt-8 space-y-3 text-sm text-black/80">
+              <p className="tracking-wide">following threads</p>
+              {threadItems.length > 0 ? (
+                <ul className="space-y-2 text-black/80">
+                  {threadItems.map((thread) => (
+                    <li key={thread}>*-{thread}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-black/50">no threads yet</p>
               )}
             </div>
           </div>
 
-          <Link
-            href="/profile/edit"
-            className="px-4 py-2 border border-border rounded-md text-sm hover:bg-muted transition-colors"
-          >
-            Edit Profile
-          </Link>
-        </div>
+          <div className="pb-10">
+            <Link
+              href="/profile/edit"
+              className="inline-flex items-center gap-2 rounded-full bg-[#bcbcbc] px-4 py-2 text-xs shadow-sm"
+            >
+              <span>⚙</span>
+              <span>Settings</span>
+            </Link>
+          </div>
+        </aside>
 
-        <div className="border-t border-border pt-8">
-          {/* Tabs */}
-          <div className="flex gap-1 mb-6 border-b border-border">
+        <section className="rounded-[32px] bg-white p-8 shadow-sm">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center">
+            <div className="h-28 w-28 rounded-full bg-[#d9d9d9] flex items-center justify-center text-4xl text-black/70">
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={displayName}
+                  className="h-full w-full rounded-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                avatarInitial
+              )}
+            </div>
+
+            <div className="flex-1 space-y-3">
+              <div className="flex flex-wrap items-center gap-4">
+                <h1 className="text-3xl">{displayName}</h1>
+                <Link
+                  href="/profile/edit"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#dcdcdc] px-4 py-1.5 text-xs shadow-sm"
+                >
+                  <span className="text-xs">✎</span>
+                  <span>Edit profile</span>
+                </Link>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 text-sm text-black/70">
+                {profile?.username && <span>@{profile.username}</span>}
+                <span>•</span>
+                <span>{postsCount} posts</span>
+                <span>{followersCount || 0} followers</span>
+                <span>{followingCount || 0} following</span>
+              </div>
+
+              {profile?.bio && <p className="text-sm text-black/80">{profile.bio}</p>}
+
+              <div className="flex flex-wrap gap-4 text-sm text-black/60">
+                {profile?.location && <span>{profile.location}</span>}
+                {profile?.website && (
+                  <a
+                    href={profile.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-black"
+                  >
+                    {profile.website}
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center gap-10 text-sm">
             <Link
               href="/profile"
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                activeTab === "works"
-                  ? "border-foreground text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+              className={`border-b pb-1 ${
+                activeTab === "works" ? "border-black" : "border-transparent text-black/60"
               }`}
             >
-              Works {works && works.length > 0 && `(${works.length})`}
+              timeline
             </Link>
+            <span className="text-black/40">reposts</span>
             <Link
               href="/profile?tab=saved"
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                activeTab === "saved"
-                  ? "border-foreground text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+              className={`border-b pb-1 ${
+                activeTab === "saved" ? "border-black" : "border-transparent text-black/60"
               }`}
             >
-              Saved {savedWorks && savedWorks.length > 0 && `(${savedWorks.length})`}
+              saved
             </Link>
           </div>
 
-          {displayWorks && displayWorks.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {displayWorks.map((work) => (
-                <Link
-                  key={work.id}
-                  href={`/work/${work.id}`}
-                  className="aspect-square relative rounded-lg overflow-hidden border border-border group"
-                >
-                  {work.image_url && (
-                    <img
-                      src={work.image_url}
-                      alt={work.title}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  )}
-                  {work.work_type === "essay" && (
-                    <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-xs font-medium rounded">
-                      Essay
-                    </span>
-                  )}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                    <p className="text-white text-sm font-medium truncate">
-                      {work.title}
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              {activeTab === "saved" ? (
-                <p className="text-muted-foreground">
-                  You haven&apos;t saved any works yet.
-                </p>
-              ) : (
-                <>
-                  <p className="text-muted-foreground mb-4">
-                    You haven&apos;t created any works yet.
-                  </p>
+          <div className="mt-8 rounded-[32px] bg-[#d9d9d9] p-6">
+            {displayWorks && displayWorks.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {displayWorks.map((work) => (
                   <Link
-                    href="/upload"
-                    className="inline-block px-6 py-2 bg-foreground text-background rounded-md font-medium hover:opacity-90 transition-opacity"
+                    key={work.id}
+                    href={`/work/${work.id}`}
+                    className="aspect-square relative rounded-2xl overflow-hidden border border-black/10 group bg-white"
                   >
-                    Create Your First Work
+                    {work.image_url && (
+                      <img
+                        src={work.image_url}
+                        alt={work.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    )}
+                    {work.work_type === "essay" && (
+                      <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-xs font-medium rounded">
+                        Essay
+                      </span>
+                    )}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                      <p className="text-white text-sm font-medium truncate">
+                        {work.title}
+                      </p>
+                    </div>
                   </Link>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-sm text-black/60">
+                {activeTab === "saved" ? (
+                  <p>You haven&apos;t saved any works yet.</p>
+                ) : (
+                  <>
+                    <p className="mb-4">You haven&apos;t created any works yet.</p>
+                    <Link
+                      href="/upload"
+                      className="inline-block rounded-full bg-[#cfcfcf] px-6 py-2 text-sm"
+                    >
+                      Create Your First Work
+                    </Link>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
       </main>
     </div>
   );
