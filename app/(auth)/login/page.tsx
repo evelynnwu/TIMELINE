@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage(): JSX.Element {
+function LoginContent(): JSX.Element {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
   const redirect = searchParams.get("redirect") ?? "/feed";
@@ -94,5 +95,20 @@ export default function LoginPage(): JSX.Element {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage(): JSX.Element {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="text-2xl font-bold mb-4">Artfolio</div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }
