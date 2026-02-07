@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { uploadFileWithPresignedUrl, deleteFile } from "@/lib/amplify/storage";
 import ImageEditor from "@/app/components/image-editor";
@@ -18,6 +18,7 @@ interface Thread {
 
 export default function NewWorkPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
@@ -142,10 +143,6 @@ export default function NewWorkPage() {
       return;
     }
 
-<<<<<<< HEAD
-    if (selectedInterests.size === 0) {
-      setError("Please select at least one interest category");
-=======
     if (workType === "essay" && !content.trim()) {
       setError("Please enter your essay content");
       return;
@@ -158,7 +155,7 @@ export default function NewWorkPage() {
 
     if (selectedThreads.size === 0) {
       setError("Please select at least one category");
->>>>>>> 4212254 (notifs following)
+
       return;
     }
 
@@ -314,6 +311,26 @@ export default function NewWorkPage() {
 
         if (threadsError) {
           console.error("Failed to save work threads:", threadsError);
+        }
+      }
+
+      // Insert additional images into work_images table
+      if (additionalImages.length > 0) {
+        const workImages = additionalImages.map((img, index) => ({
+          work_id: insertedWork.id,
+          image_path: img.path,
+          image_url: img.url,
+          width: img.width,
+          height: img.height,
+          display_order: index + 1, // Start from 1 since cover is 0
+        }));
+
+        const { error: imagesError } = await supabase
+          .from("work_images")
+          .insert(workImages);
+
+        if (imagesError) {
+          console.error("Failed to save additional images:", imagesError);
         }
       }
 
@@ -521,11 +538,7 @@ export default function NewWorkPage() {
         {/* Submit button */}
         <button
           type="submit"
-<<<<<<< HEAD
-          disabled={uploading || validating || files.length === 0 || selectedInterests.size === 0}
-=======
           disabled={uploading || validating || !file || selectedThreads.size === 0}
->>>>>>> 4212254 (notifs following)
           className="w-full py-3 bg-foreground text-background rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {validating
