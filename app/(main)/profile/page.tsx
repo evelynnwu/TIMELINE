@@ -117,10 +117,34 @@ export default async function ProfilePage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+<<<<<<< HEAD
         <ThreadLeftSidebar
           profile={profile}
           threads={threadItems}
           footer={
+=======
+        <aside className="hidden lg:flex lg:flex-col lg:justify-between bg-[#d9d9d9] pr-4">
+          <div className="pt-10">
+            <div className="flex items-center gap-5 text-5xl text-black">
+              <span>✱</span>
+              <span className="translate-y-1">—</span>
+            </div>
+            <div className="mt-8 space-y-3 text-sm text-black/80">
+              <p className="font-bold tracking-wide">following threads</p>
+              {threadItems.length > 0 ? (
+                <ul className="space-y-2 text-black/80">
+                  {threadItems.map((thread) => (
+                    <li key={thread}>*-{thread}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-black/50">no threads yet</p>
+              )}
+            </div>
+          </div>
+
+          <div className="pb-10">
+>>>>>>> f7b6d3c (commit all)
             <Link
               href="/profile/edit"
               className="inline-flex items-center gap-2 rounded-full bg-[#bcbcbc] px-4 py-2 text-xs shadow-sm"

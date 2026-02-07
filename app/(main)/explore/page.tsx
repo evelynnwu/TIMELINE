@@ -106,6 +106,22 @@ export default async function ExplorePage({
     .order("created_at", { ascending: false })
     .limit(6);
 
+  // Fetch threads the user follows
+  const { data: followedThreadsData } = user
+    ? await supabase
+        .from("user_threads")
+        .select("thread:threads!user_threads_thread_id_fkey(id, name)")
+        .eq("user_id", user.id)
+        .limit(6)
+    : { data: null };
+
+  const followedThreads = (followedThreadsData || [])
+    .map((item: { thread: { id: string; name: string } | { id: string; name: string }[] | null }) => {
+      const t = item.thread;
+      return Array.isArray(t) ? t[0] : t;
+    })
+    .filter((t): t is { id: string; name: string } => t !== null && t !== undefined);
+
   // Get following list and counts
   const [followingResult, followerCountResult, followingCountResult] = user
     ? await Promise.all([
@@ -185,6 +201,26 @@ export default async function ExplorePage({
               )}
             </div>
 
+            <div className="space-y-3 text-sm">
+              <p className="font-bold text-black/70">following threads</p>
+              {followedThreads.length > 0 ? (
+                <ul className="space-y-2 text-black/80">
+                  {followedThreads.map((thread) => (
+                    <li key={thread.id}>
+                      <Link
+                        href={`/thread/${thread.id}`}
+                        className="hover:text-black transition-colors"
+                      >
+                        *-{thread.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-black/50">no threads yet</p>
+              )}
+            </div>
+
             <div className="mt-auto flex items-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#3a8d3a] text-white shadow-md">
                 {avatarLetter}
@@ -202,17 +238,16 @@ export default async function ExplorePage({
 
           <aside className="hidden lg:flex lg:flex-col lg:gap-10">
             <div className="space-y-4">
-              <p className="text-sm text-black/70">threads for you</p>
+              <p className="text-sm font-bold text-black/70">threads for you</p>
               {threadItems.length > 0 ? (
                 <ul className="space-y-3 text-sm">
                   {threadItems.map((thread) => (
                     <li key={thread.id}>
                       <Link
                         href={`/thread/${thread.id}`}
-                        className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                        className="hover:text-black transition-colors"
                       >
-                        <span className="h-8 w-8 rounded-md bg-[#d0d0d0]" />
-                        <span>{thread.name}</span>
+                        *-{thread.name}
                       </Link>
                     </li>
                   ))}
