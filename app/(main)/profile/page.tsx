@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import SpiralTimeline from "@/app/components/spiral-timeline";
 import ThreadLeftSidebar from "@/app/components/thread-left-sidebar";
 
 interface Props {
@@ -117,12 +118,10 @@ export default async function ProfilePage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-<<<<<<< HEAD
         <ThreadLeftSidebar
           profile={profile}
           threads={threadItems}
           footer={
-=======
         <aside className="hidden lg:flex lg:flex-col lg:justify-between bg-[#d9d9d9] pr-4">
           <div className="pt-10">
             <div className="flex items-center gap-5 text-5xl text-black">
@@ -144,7 +143,6 @@ export default async function ProfilePage({ searchParams }: Props) {
           </div>
 
           <div className="pb-10">
->>>>>>> f7b6d3c (commit all)
             <Link
               href="/profile/edit"
               className="inline-flex items-center gap-2 rounded-full bg-[#bcbcbc] px-4 py-2 text-xs shadow-sm"
@@ -217,7 +215,6 @@ export default async function ProfilePage({ searchParams }: Props) {
             >
               timeline
             </Link>
-            <span className="text-black/40">reposts</span>
             <Link
               href="/profile?tab=saved"
               className={`border-b pb-1 ${
@@ -228,53 +225,46 @@ export default async function ProfilePage({ searchParams }: Props) {
             </Link>
           </div>
 
-          <div className="mt-8 rounded-[32px] bg-[#d9d9d9] p-6">
-            {displayWorks && displayWorks.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {displayWorks.map((work) => (
-                  <Link
-                    key={work.id}
-                    href={`/work/${work.id}`}
-                    className="aspect-square relative rounded-2xl overflow-hidden border border-black/10 group bg-white"
-                  >
-                    {work.image_url && (
-                      <img
-                        src={work.image_url}
-                        alt={work.title}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    )}
-                    {work.work_type === "essay" && (
-                      <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-xs font-medium rounded">
-                        Essay
-                      </span>
-                    )}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                      <p className="text-white text-sm font-medium truncate">
-                        {work.title}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-sm text-black/60">
-                {activeTab === "saved" ? (
-                  <p>You haven&apos;t saved any works yet.</p>
-                ) : (
-                  <>
-                    <p className="mb-4">You haven&apos;t created any works yet.</p>
+          {/* Timeline or Grid based on active tab */}
+          {activeTab === "works" ? (
+            <SpiralTimeline works={displayWorks || []} />
+          ) : (
+            <div className="mt-8 rounded-[32px] bg-[#d9d9d9] p-6">
+              {displayWorks && displayWorks.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {displayWorks.map((work) => (
                     <Link
-                      href="/upload"
-                      className="inline-block rounded-full bg-[#cfcfcf] px-6 py-2 text-sm"
+                      key={work.id}
+                      href={`/work/${work.id}`}
+                      className="aspect-square relative rounded-2xl overflow-hidden border border-black/10 group bg-white"
                     >
-                      Create Your First Work
+                      {work.image_url && (
+                        <img
+                          src={work.image_url}
+                          alt={work.title}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      )}
+                      {work.work_type === "essay" && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-xs font-medium rounded">
+                          Essay
+                        </span>
+                      )}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                        <p className="text-white text-sm font-medium truncate">
+                          {work.title}
+                        </p>
+                      </div>
                     </Link>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-sm text-black/60">
+                  <p>You haven&apos;t saved any works yet.</p>
+                </div>
+              )}
+            </div>
+          )}
         </section>
     </div>
   );
