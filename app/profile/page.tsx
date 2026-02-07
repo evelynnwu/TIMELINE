@@ -20,6 +20,13 @@ export default async function ProfilePage() {
     .eq("id", user.id)
     .single();
 
+  // Fetch the user's works
+  const { data: works } = await supabase
+    .from("works")
+    .select("*")
+    .eq("author_id", user.id)
+    .order("created_at", { ascending: false });
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
@@ -40,7 +47,13 @@ export default async function ProfilePage() {
             >
               Profile
             </Link>
-            <form action="/auth/signout" method="post">
+            <Link
+              href="/upload"
+              className="px-4 py-1.5 bg-foreground text-background rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              Upload
+            </Link>
+            <form action="/auth/signout" method="POST">
               <button
                 type="submit"
                 className="text-sm text-muted-foreground hover:text-foreground"
@@ -58,7 +71,8 @@ export default async function ProfilePage() {
             <img
               src={profile.avatar_url}
               alt={profile.display_name || "Avatar"}
-              className="w-24 h-24 rounded-full"
+              className="w-24 h-24 rounded-full object-cover"
+              referrerPolicy="no-referrer"
             />
           ) : (
             <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center">
@@ -101,10 +115,45 @@ export default async function ProfilePage() {
         </div>
 
         <div className="border-t border-border pt-8">
-          <h2 className="text-lg font-semibold mb-4">Your Works</h2>
-          <p className="text-muted-foreground text-sm">
-            You haven't uploaded any works yet. Your portfolio will appear here.
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">
+              Your Works {works && works.length > 0 && `(${works.length})`}
+            </h2>
+          </div>
+
+          {works && works.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {works.map((work) => (
+                <div
+                  key={work.id}
+                  className="aspect-square relative rounded-lg overflow-hidden border border-border group"
+                >
+                  <img
+                    src={work.image_url}
+                    alt={work.title}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                    <p className="text-white text-sm font-medium truncate">
+                      {work.title}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">
+                You haven't uploaded any works yet.
+              </p>
+              <Link
+                href="/upload"
+                className="inline-block px-6 py-2 bg-foreground text-background rounded-md font-medium hover:opacity-90 transition-opacity"
+              >
+                Upload Your First Artwork
+              </Link>
+            </div>
+          )}
         </div>
       </main>
     </div>
