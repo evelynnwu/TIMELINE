@@ -139,27 +139,14 @@ export default function NewUserPage() {
     setSaving(true);
 
     try {
-      let finalAvatarUrl = avatarUrl;
-
-      // Upload new avatar if selected
-      if (avatarFile) {
-        const fileExt = avatarFile.name.split(".").pop();
-        const storagePath = `${user.id}/avatar.${fileExt}`;
-
-        try {
-          const uploadResult = await uploadFile(avatarFile, storagePath);
-          finalAvatarUrl = uploadResult.url;
-        } catch {
-          throw new Error("Failed to upload avatar");
-        }
-      }
+      const displayName = `${firstName} ${lastName}`.trim();
 
       // Update profile
       const { error: updateError } = await supabase
         .from("profiles")
         .update({
           username: username.toLowerCase(),
-          display_name: displayName,
+          display_name: displayName || null,
           bio: bio.trim() || null,
           avatar_url: avatarUrl,
         })
