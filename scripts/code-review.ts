@@ -4,17 +4,18 @@
  * Reviews staged git changes for security, conventions, and best practices
  */
 
-import 'dotenv/config';
+import { config } from 'dotenv';
 import { Dedalus, DedalusRunner } from 'dedalus-labs';
-import { execSync } from 'child_process';
-import { readFileSync } from 'fs';
+import { execFileSync } from 'child_process';
+import { readFileSync, existsSync } from 'fs';
 import * as path from 'path';
 
-// Load .env.local if it exists
-try {
-  require('dotenv').config({ path: path.join(process.cwd(), '.env.local') });
-} catch (error) {
-  // .env.local not found or dotenv not installed
+// Load environment variables: .env first, then .env.local overrides
+config(); // Load .env if it exists
+
+const envLocalPath = path.join(process.cwd(), '.env.local');
+if (existsSync(envLocalPath)) {
+  config({ path: envLocalPath, override: true }); // .env.local overrides .env
 }
 
 interface ReviewResult {
@@ -29,7 +30,7 @@ interface ReviewResult {
 
 async function getChangedFiles(): Promise<string[]> {
   try {
-    const output = execSync('git diff --cached --name-only', { encoding: 'utf-8' });
+    const output = execFileSync('git', ['diff', '--cached', '--name-only'], { encoding: 'utf-8' });
     return output
       .split('\n')
       .filter(file =>
@@ -47,7 +48,7 @@ async function getChangedFiles(): Promise<string[]> {
 
 async function getFileDiff(file: string): Promise<string> {
   try {
-    return execSync(`git diff --cached ${file}`, { encoding: 'utf-8' });
+    return execFileSync('git', ['diff', '--cached', '--', file], { encoding: 'utf-8' });
   } catch (error) {
     console.error(`Error getting diff for ${file}:`, error);
     return '';
@@ -159,16 +160,28 @@ Be concise. Only flag real issues, not stylistic preferences.
   });
 
   try {
-    // Extract text from result - handle both streaming and non-streaming responses
+    // Extract text from result - handle different response formats
     let outputText: string;
+
+    if (!result) {
+      throw new Error('Null result from Dedalus');
+    }
+
     if (typeof result === 'string') {
       outputText = result;
-    } else if ('text' in result && typeof result.text === 'string') {
-      outputText = result.text;
-    } else if ('content' in result && typeof result.content === 'string') {
-      outputText = result.content;
+    } else if (typeof result === 'object') {
+      // Try different possible properties
+      if ('finalOutput' in result && typeof result.finalOutput === 'string') {
+        outputText = result.finalOutput;
+      } else if ('text' in result && typeof result.text === 'string') {
+        outputText = result.text;
+      } else if ('content' in result && typeof result.content === 'string') {
+        outputText = result.content;
+      } else {
+        throw new Error(`Unexpected result format from Dedalus: ${JSON.stringify(Object.keys(result))}`);
+      }
     } else {
-      throw new Error('Unexpected result format from Dedalus');
+      throw new Error(`Unexpected result type: ${typeof result}`);
     }
 
     const analysis = JSON.parse(outputText);
