@@ -1,71 +1,66 @@
 import Link from "next/link";
-import { getUser } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }): Promise<JSX.Element> {
-  const user = await getUser();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   return (
-    <div className="min-h-screen">
-      <nav className="border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-8">
-              <Link href="/" className="text-xl font-bold">
-                Artfolio
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <Link href="/" className="text-xl font-bold">
+            Artfolio
+          </Link>
+          <nav className="flex items-center gap-6">
+            <Link
+              href="/feed"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Feed
+            </Link>
+            {user && (
+              <Link
+                href="/profile"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Profile
               </Link>
-              <div className="hidden sm:flex gap-6">
-                <Link
-                  href="/feed"
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  Feed
-                </Link>
-                <Link
-                  href="/explore"
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  Explore
-                </Link>
-                <Link
-                  href="/upload"
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  Upload
-                </Link>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              {user ? (
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground hidden sm:block">
-                    {user.email}
-                  </span>
-                  <form action="/signout" method="POST">
-                    <button
-                      type="submit"
-                      className="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                      Sign out
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                <Link
-                  href="/login"
+            )}
+            {user && (
+              <Link
+                href="/upload"
+                className="flex items-center gap-1 px-4 py-1.5 bg-foreground text-background rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                <span>+</span> New
+              </Link>
+            )}
+            {user ? (
+              <form action="/auth/signout" method="POST">
+                <button
+                  type="submit"
                   className="text-sm text-muted-foreground hover:text-foreground"
                 >
-                  Sign in
-                </Link>
-              )}
-            </div>
-          </div>
+                  Sign out
+                </button>
+              </form>
+            ) : (
+              <Link
+                href="/login"
+                className="px-4 py-1.5 bg-foreground text-background rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Sign in
+              </Link>
+            )}
+          </nav>
         </div>
-      </nav>
-
+      </header>
       <main>{children}</main>
     </div>
   );

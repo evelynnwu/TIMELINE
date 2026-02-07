@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Avatar } from "@/components/avatar";
 
 interface Comment {
   id: string;
@@ -167,21 +168,13 @@ export function CommentsSection({
         <div className="space-y-6">
           {comments.map((comment) => (
             <div key={comment.id} className="flex gap-3">
-              {/* Avatar */}
-              {comment.author?.avatar_url ? (
-                <img
-                  src={comment.author.avatar_url}
-                  alt={comment.author.display_name || "User"}
-                  className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                  <span className="text-muted-foreground text-sm">
-                    {(comment.author?.display_name || "?")[0].toUpperCase()}
-                  </span>
-                </div>
-              )}
+              <Avatar
+                src={comment.author?.avatar_url}
+                alt={comment.author?.display_name || "User"}
+                fallback={comment.author?.display_name || "?"}
+                size="sm"
+                className="flex-shrink-0"
+              />
 
               {/* Comment content */}
               <div className="flex-1 min-w-0">

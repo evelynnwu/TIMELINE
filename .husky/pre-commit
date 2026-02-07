@@ -1,0 +1,13 @@
+echo "Running TypeScript type check..."
+
+OUTPUT=$(npx tsc --noEmit 2>&1)
+TSC_EXIT_CODE=$?
+
+if [ $TSC_EXIT_CODE -ne 0 ]; then
+  echo "$OUTPUT" | head -100
+  echo ""
+  echo "❌ TypeScript type check failed. Please fix the errors above before committing."
+  exit 1
+fi
+
+echo "✓ TypeScript type check passed"

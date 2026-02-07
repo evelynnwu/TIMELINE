@@ -29,7 +29,7 @@ export default function RootLayout({
 }): JSX.Element {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${inter.className} ${jetbrainsMono.variable} ${notoSerifKR.variable}`}>
         <AmplifyProvider>{children}</AmplifyProvider>
       </body>
     </html>
