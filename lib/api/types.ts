@@ -56,6 +56,7 @@ export interface Work {
   created_at: string;
   updated_at: string;
   likes_count: number;
+  is_liked?: boolean; // Whether current user has liked this work
   comments_count: number;
   primary_thread?: {
     id: string;

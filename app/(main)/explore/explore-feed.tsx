@@ -1,9 +1,8 @@
 "use client";
-
 import { useState, useMemo, useTransition } from "react";
 import Link from "next/link";
 import Fuse from "fuse.js";
-import { toggleFollow } from "./actions";
+import { toggleFollow, toggleLike } from "./actions";
 
 type Work = {
   id: string;
@@ -25,6 +24,8 @@ type Work = {
     name: string;
     slug: string;
   } | null;
+  likeCount: number;
+  isLiked: boolean;
 };
 
 type Profile = {
@@ -48,6 +49,9 @@ type SearchMode = "posts" | "users";
 export default function ExploreFeed({ works, profiles, followingIds, isAuthenticated, searchQuery }: ExploreFeedProps) {
   const [searchMode, setSearchMode] = useState<SearchMode>("posts");
   const [followingState, setFollowingState] = useState<Set<string>>(new Set(followingIds));
+  const [likesState, setLikesState] = useState<Map<string, { isLiked: boolean; likeCount: number }>>(
+    new Map(works.map((work) => [work.id, { isLiked: work.isLiked, likeCount: work.likeCount }]))
+  );
   const [isPending, startTransition] = useTransition();
 
   const followingSet = useMemo(() => new Set(followingIds), [followingIds]);
@@ -121,6 +125,27 @@ export default function ExploreFeed({ works, profiles, followingIds, isAuthentic
     });
   };
 
+  const handleLike = (workId: string) => {
+    if (!isAuthenticated) return;
+
+    startTransition(() => {
+      void (async () => {
+        const result = await toggleLike(workId);
+
+        if (result.success) {
+          setLikesState((prev) => {
+            const next = new Map(prev);
+            next.set(workId, {
+              isLiked: result.isLiked,
+              likeCount: result.likeCount,
+            });
+            return next;
+          });
+        }
+      })();
+    });
+  };
+
   return (
     <section className="space-y-6">
       <div className="flex items-center rounded-full bg-white px-2 py-1 shadow-sm w-fit">
@@ -156,6 +181,7 @@ export default function ExploreFeed({ works, profiles, followingIds, isAuthentic
               (author?.username ? `@${author.username}` : "anonymous");
             const authorInitial = authorName.charAt(0).toUpperCase();
             const isFollowed = followingSet.has(work.author_id);
+            const likeInfo = likesState.get(work.id) || { isLiked: work.isLiked, likeCount: work.likeCount };
 
             return (
               <article
@@ -193,29 +219,71 @@ export default function ExploreFeed({ works, profiles, followingIds, isAuthentic
                   )}
                 </Link>
                 <div className="flex items-center justify-between border-t border-black/10 p-4 text-sm">
-                  <Link
-                    href={author?.username ? `/${author.username}` : "#"}
-                    className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-                  >
-                    {author?.avatar_url ? (
-                      <img
-                        src={author.avatar_url}
-                        alt={authorName}
-                        className="h-10 w-10 rounded-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div className="h-10 w-10 rounded-full bg-[#e6e6e6] flex items-center justify-center">
-                        {authorInitial}
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-black/80">{authorName}</p>
-                      {work.title && work.image_url && (
-                        <p className="text-black/60">{work.title}</p>
+                  <div className="flex items-center gap-4 flex-1">
+                    <Link
+                      href={author?.username ? `/${author.username}` : "#"}
+                      className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                    >
+                      {author?.avatar_url ? (
+                        <img
+                          src={author.avatar_url}
+                          alt={authorName}
+                          className="h-10 w-10 rounded-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-[#e6e6e6] flex items-center justify-center">
+                          {authorInitial}
+                        </div>
                       )}
-                    </div>
-                  </Link>
+                      <div>
+                        <p className="text-black/80">{authorName}</p>
+                        {work.title && work.image_url && (
+                          <p className="text-black/60">{work.title}</p>
+                        )}
+                      </div>
+                    </Link>
+                    {isAuthenticated ? (
+                      <button
+                        onClick={() => handleLike(work.id)}
+                        disabled={isPending}
+                        className="flex items-center gap-1.5 text-black/60 hover:text-black transition-colors disabled:opacity-50"
+                        aria-label={likeInfo.isLiked ? "Unlike" : "Like"}
+                      >
+                        <svg
+                          className={`w-5 h-5 ${likeInfo.isLiked ? "fill-red-500 text-red-500" : "fill-none"}`}
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                          />
+                        </svg>
+                        <span className="text-sm">{likeInfo.likeCount}</span>
+                      </button>
+                    ) : likeInfo.likeCount > 0 ? (
+                      <div className="flex items-center gap-1.5 text-black/60">
+                        <svg
+                          className="w-5 h-5 fill-none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                          />
+                        </svg>
+                        <span className="text-sm">{likeInfo.likeCount}</span>
+                      </div>
+                    ) : null}
+                  </div>
                   {isFollowed && (
                     <span className="text-xs text-black/50 bg-black/5 px-2 py-1 rounded-full">
                       Following

@@ -33,6 +33,7 @@ export default async function ExplorePage({
 
   const followingIds = new Set(followingData?.map((f) => f.following_id) || []);
 
+  // Fetch works with like counts
   const { data: works } = await supabase
     .from("works")
     .select(
@@ -50,6 +51,30 @@ export default async function ExplorePage({
     )
     .order("created_at", { ascending: false })
     .limit(100);
+
+  // Get like counts for all works
+  const workIds = works?.map((w) => w.id) || [];
+  const { data: likeCounts } = await supabase
+    .from("likes")
+    .select("work_id")
+    .in("work_id", workIds);
+
+  // Get current user's likes
+  const { data: userLikes } = user
+    ? await supabase
+        .from("likes")
+        .select("work_id")
+        .eq("user_id", user.id)
+        .in("work_id", workIds)
+    : { data: null };
+
+  // Create maps for efficient lookup
+  const likeCountMap = new Map<string, number>();
+  likeCounts?.forEach((like) => {
+    likeCountMap.set(like.work_id, (likeCountMap.get(like.work_id) || 0) + 1);
+  });
+
+  const userLikedSet = new Set(userLikes?.map((like) => like.work_id) || []);
 
   // Sort works: followed users first, then by date
   const sortedWorks = works?.sort((a, b) => {
@@ -96,10 +121,12 @@ export default async function ExplorePage({
 
   const threadItems = threads || [];
 
-  // Normalize author field - Supabase can return single object or array
+  // Normalize author field and add like info - Supabase can return single object or array
   const workItems = (sortedWorks || []).map((work) => ({
     ...work,
     author: Array.isArray(work.author) ? work.author[0] : work.author,
+    likeCount: likeCountMap.get(work.id) || 0,
+    isLiked: userLikedSet.has(work.id),
   }));
   const creativeItems = creatives || [];
   const followingItems =
