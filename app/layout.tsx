@@ -3,17 +3,25 @@ import { Inter, JetBrains_Mono, Noto_Serif_KR } from "next/font/google";
 import "./globals.css";
 import { AmplifyProvider } from "@/components/providers/amplify-provider";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  preload: true,
+});
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains-mono",
+  display: "swap",
+  preload: true,
 });
 
 const notoSerifKR = Noto_Serif_KR({
   subsets: ["latin"],
   weight: ["400"],
   variable: "--font-serif-display",
+  display: "swap",
+  preload: true,
 });
 
 export const metadata: Metadata = {

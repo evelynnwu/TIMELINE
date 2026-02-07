@@ -9,74 +9,79 @@ export default async function ExplorePage(): Promise<JSX.Element> {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: currentProfile } = user
-    ? await supabase
-        .from("profiles")
-        .select("id, username, display_name, avatar_url")
-        .eq("id", user.id)
-        .single()
-    : { data: null };
-
-  // Get list of users the current user follows
-  const { data: followingData } = user
-    ? await supabase
-        .from("follows")
-        .select("following_id")
-        .eq("follower_id", user.id)
-    : { data: null };
+  // Fetch all data in parallel
+  const [
+    { data: currentProfile },
+    { data: followingData },
+    { data: works },
+    { data: allProfiles },
+    { data: creatives },
+    { data: threads },
+    { data: following },
+  ] = await Promise.all([
+    user
+      ? supabase
+          .from("profiles")
+          .select("id, username, display_name, avatar_url")
+          .eq("id", user.id)
+          .single()
+      : Promise.resolve({ data: null }),
+    user
+      ? supabase.from("follows").select("following_id").eq("follower_id", user.id)
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("works")
+      .select(
+        `
+        id,
+        title,
+        description,
+        image_url,
+        work_type,
+        content,
+        created_at,
+        author_id,
+        author:profiles!works_author_id_fkey(id, username, display_name, avatar_url),
+        primary_interest:interests!works_primary_interest_id_fkey(id, name, slug)
+      `
+      )
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabase
+      .from("profiles")
+      .select("id, username, display_name, avatar_url, bio")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("profiles")
+      .select("id, username, display_name, avatar_url")
+      .order("created_at", { ascending: false })
+      .limit(6),
+    supabase
+      .from("threads")
+      .select("id, name")
+      .order("created_at", { ascending: false })
+      .limit(6),
+    user
+      ? supabase
+          .from("follows")
+          .select(
+            "following:profiles!follows_following_id_fkey(id, username, display_name, avatar_url)"
+          )
+          .eq("follower_id", user.id)
+          .limit(6)
+      : Promise.resolve({
+          data: [] as {
+            following: {
+              id: string;
+              username: string | null;
+              display_name: string | null;
+              avatar_url: string | null;
+            } | null;
+          }[],
+        }),
+  ]);
 
   const followingIds = new Set(followingData?.map((f) => f.following_id) || []);
-
-  // Get user's interest preferences
-  const { data: userInterests } = user
-    ? await supabase
-        .from("user_interests")
-        .select("interest_id")
-        .eq("user_id", user.id)
-    : { data: null };
-
-  const userInterestIds = userInterests?.map((ui) => ui.interest_id) || [];
-
-  // Get work IDs that match user's interests (if user has interests)
-  let matchingWorkIds: string[] | null = null;
-  if (userInterestIds.length > 0) {
-    const { data: matchingWorks } = await supabase
-      .from("work_interests")
-      .select("work_id")
-      .in("interest_id", userInterestIds);
-
-    if (matchingWorks) {
-      const workIdSet = new Set(matchingWorks.map((w) => w.work_id).filter((id): id is string => id !== null));
-      matchingWorkIds = Array.from(workIdSet);
-    }
-  }
-
-  // Build works query with optional interest filtering
-  let worksQuery = supabase
-    .from("works")
-    .select(
-      `
-      id,
-      title,
-      description,
-      image_url,
-      work_type,
-      content,
-      created_at,
-      author_id,
-      author:profiles!works_author_id_fkey(id, username, display_name, avatar_url),
-      primary_interest:interests(id, name, slug)
-    `
-    );
-
-  // Filter by matching interests if user has preferences AND there are matches
-  if (matchingWorkIds !== null && matchingWorkIds.length > 0) {
-    worksQuery = worksQuery.in("id", matchingWorkIds);
-  }
-
-  const { data: works } = await worksQuery
-    .order("created_at", { ascending: false })
-    .limit(100);
 
   // Sort works: followed users first, then by date
   const sortedWorks = works?.sort((a, b) => {
@@ -88,28 +93,6 @@ export default async function ExplorePage(): Promise<JSX.Element> {
 
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
-
-  const { data: creatives } = await supabase
-    .from("profiles")
-    .select("id, username, display_name, avatar_url")
-    .order("created_at", { ascending: false })
-    .limit(6);
-
-  const { data: threads } = await supabase
-    .from("threads")
-    .select("id, name")
-    .order("created_at", { ascending: false })
-    .limit(6);
-
-  const { data: following } = user
-    ? await supabase
-        .from("follows")
-        .select(
-          "following:profiles!follows_following_id_fkey(id, username, display_name, avatar_url)"
-        )
-        .eq("follower_id", user.id)
-        .limit(6)
-    : { data: [] as { following: { id: string; username: string | null; display_name: string | null; avatar_url: string | null } | null }[] };
 
   const displayName =
     currentProfile?.display_name || currentProfile?.username || "guest";
@@ -204,7 +187,9 @@ export default async function ExplorePage(): Promise<JSX.Element> {
 
           <ExploreFeed
             works={workItems}
+            profiles={allProfiles || []}
             followingIds={Array.from(followingIds)}
+            isAuthenticated={!!user}
           />
 
           <aside className="hidden lg:flex lg:flex-col lg:gap-10">

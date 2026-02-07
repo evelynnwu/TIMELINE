@@ -1,8 +1,8 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { toggleBookmark } from "./actions";
 
 interface BookmarkButtonProps {
   workId: string;
@@ -14,57 +14,26 @@ export function BookmarkButton({
   isBookmarked: initialIsBookmarked,
 }: BookmarkButtonProps) {
   const router = useRouter();
-  const supabase = createClient();
-
   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-  async function handleToggleBookmark() {
-    setIsLoading(true);
+  function handleToggleBookmark() {
+    startTransition(() => {
+      void (async () => {
+        const result = await toggleBookmark(workId);
 
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      if (isBookmarked) {
-        // Remove bookmark
-        const { error } = await supabase
-          .from("bookmarks")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("work_id", workId);
-
-        if (error) throw error;
-        setIsBookmarked(false);
-      } else {
-        // Add bookmark
-        const { error } = await supabase.from("bookmarks").insert({
-          user_id: user.id,
-          work_id: workId,
-        });
-
-        if (error) throw error;
-        setIsBookmarked(true);
-      }
-
-      router.refresh();
-    } catch (error) {
-      console.error("Error toggling bookmark:", error);
-    } finally {
-      setIsLoading(false);
-    }
+        if (result.success) {
+          setIsBookmarked(result.isBookmarked);
+          router.refresh();
+        }
+      })();
+    });
   }
 
   return (
     <button
       onClick={handleToggleBookmark}
-      disabled={isLoading}
+      disabled={isPending}
       className={`p-2 rounded-md transition-colors disabled:opacity-50 ${
         isBookmarked
           ? "text-foreground bg-muted"
@@ -72,7 +41,7 @@ export function BookmarkButton({
       }`}
       title={isBookmarked ? "Remove bookmark" : "Bookmark this work"}
     >
-      {isLoading ? (
+      {isPending ? (
         <svg
           className="w-5 h-5 animate-spin"
           fill="none"

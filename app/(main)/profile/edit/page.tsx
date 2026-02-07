@@ -21,6 +21,12 @@ interface Profile {
   avatar_url: string | null;
 }
 
+interface Interest {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export default function EditProfilePage() {
   const router = useRouter();
   const supabase = createClient();
@@ -43,6 +49,11 @@ export default function EditProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [removeAvatar, setRemoveAvatar] = useState(false);
+
+  const [interests, setInterests] = useState<Interest[]>([]);
+  const [selectedInterests, setSelectedInterests] = useState<Set<string>>(
+    new Set()
+  );
 
   // Load profile on mount
   useEffect(() => {
@@ -77,6 +88,29 @@ export default function EditProfilePage() {
         location: data.location || "",
         avatar_url: data.avatar_url,
       });
+
+      // Fetch all interests
+      const { data: interestsData } = await supabase
+        .from("interests")
+        .select("id, name, slug")
+        .order("name");
+
+      if (interestsData) {
+        setInterests(interestsData);
+      }
+
+      // Fetch user's current interest selections
+      const { data: userInterests } = await supabase
+        .from("user_interests")
+        .select("interest_id")
+        .eq("user_id", user.id);
+
+      if (userInterests && userInterests.length > 0) {
+        setSelectedInterests(
+          new Set(userInterests.map((ui) => ui.interest_id))
+        );
+      }
+
       setLoading(false);
     }
 
@@ -127,6 +161,18 @@ export default function EditProfilePage() {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  }
+
+  function toggleInterest(interestId: string) {
+    setSelectedInterests((prev) => {
+      const next = new Set(prev);
+      if (next.has(interestId)) {
+        next.delete(interestId);
+      } else {
+        next.add(interestId);
+      }
+      return next;
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -212,6 +258,26 @@ export default function EditProfilePage() {
 
       if (updateError) {
         throw updateError;
+      }
+
+      // Update user interests
+      // Delete existing interests
+      await supabase.from("user_interests").delete().eq("user_id", user.id);
+
+      // Insert new selections
+      if (selectedInterests.size > 0) {
+        const inserts = Array.from(selectedInterests).map((interestId) => ({
+          user_id: user.id,
+          interest_id: interestId,
+        }));
+
+        const { error: interestsError } = await supabase
+          .from("user_interests")
+          .insert(inserts);
+
+        if (interestsError) {
+          throw interestsError;
+        }
       }
 
       router.push("/profile");
@@ -396,6 +462,38 @@ export default function EditProfilePage() {
           />
         </div>
 
+        {/* Interests */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium">
+            Interests
+            <span className="text-muted-foreground ml-2 font-normal">
+              (Select at least 2)
+            </span>
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {interests.map((interest) => {
+              const isSelected = selectedInterests.has(interest.id);
+              return (
+                <button
+                  key={interest.id}
+                  type="button"
+                  onClick={() => toggleInterest(interest.id)}
+                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                    isSelected
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {interest.name}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {selectedInterests.size} selected
+          </p>
+        </div>
+
         {/* Error message */}
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
@@ -407,7 +505,7 @@ export default function EditProfilePage() {
         <div className="flex gap-3">
           <button
             type="submit"
-            disabled={saving || uploadingAvatar}
+            disabled={saving || uploadingAvatar || selectedInterests.size < 2}
             className="flex-1 py-2.5 bg-foreground text-background rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {uploadingAvatar
@@ -417,6 +515,11 @@ export default function EditProfilePage() {
               : "Save Changes"}
           </button>
         </div>
+        {selectedInterests.size < 2 && (
+          <p className="text-xs text-amber-600 text-center">
+            Please select at least 2 interests to save changes
+          </p>
+        )}
       </form>
     </div>
   );

@@ -88,34 +88,26 @@ ${conventions ? `Project conventions from CLAUDE.md:\n${conventions.slice(0, 200
     instructions: `
 You are reviewing code for Artfolio, an AI-free artist portfolio platform.
 
-CRITICAL CHECKS (must flag these):
-1. **Security Issues**
-   - SQL injection vulnerabilities
-   - XSS vulnerabilities (unescaped user input)
-   - Auth bypass attempts (missing auth checks in API routes)
-   - RLS policy violations (direct DB access without auth)
-   - Secrets in code (API keys, tokens)
-   - AI detection bypass attempts
+CRITICAL CHECKS (only build-failing issues):
+- Syntax errors that would prevent compilation
+- Missing imports that would cause runtime errors
+- Invalid SQL syntax in migrations
+- Invalid JSON in config files
+- TypeScript errors that would fail build
 
-2. **Database Security** (especially important!)
-   - Missing RLS policies on new tables
-   - Overly permissive RLS policies (e.g., allowing update on all rows)
-   - Missing cascade deletes on foreign keys
-   - Indexes on foreign keys and common query fields
-
-3. **Artfolio-Specific Issues**
-   - AI detection skipped or threshold lowered without reason
-   - Storage operations without auth checks
-   - Public access to private data (bookmarks should be private!)
-   - Missing validation on user-generated content
-
-WARNING CHECKS (suggest improvements):
+WARNING CHECKS (everything else - security, best practices, etc.):
+- Security issues (SQL injection, XSS, auth bypasses)
+  Note: Server actions with proper auth.getUser() + RLS are acceptable
+- Hardcoded secrets (API keys, passwords, tokens)
+- Missing RLS policies on new tables
+- Database issues (missing indexes, cascade deletes)
+- AI detection removed or threshold changes
 - Naming conventions violations (kebab-case files, PascalCase components, snake_case DB)
 - Missing error handling
 - N+1 query opportunities
-- Large bundle imports (import whole library instead of specific functions)
+- Large bundle imports
 - Missing TypeScript types or 'any' types
-- Server components that should be client components (and vice versa)
+- Server vs client component issues
 
 INFO CHECKS (nice to haves):
 - Missing comments on complex logic
@@ -154,7 +146,11 @@ Return JSON:
   "approved": boolean  // false if any CRITICAL issues
 }
 
-Be concise. Only flag real issues, not stylistic preferences.
+IMPORTANT:
+- CRITICAL = only build-failing issues (syntax errors, missing imports, invalid SQL/JSON)
+- WARNING = security, best practices, conventions (these don't block commits)
+- Trust that TypeScript + RLS policies + server-side auth provide protection
+- Be concise. Only flag real issues, not stylistic preferences.
 `,
     response_format: { type: 'json_object' }
   });

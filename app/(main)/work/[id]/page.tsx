@@ -14,22 +14,20 @@ export default async function WorkPage({ params }: Props) {
   const { id } = await params;
   const supabase = await createClient();
 
-  // Get current user (may be null)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Fetch the work with author
-  const { data: work, error } = await supabase
-    .from("works")
-    .select(
+  // Fetch user and work in parallel
+  const [{ data: { user } }, { data: work, error }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("works")
+      .select(
+        `
+        *,
+        author:profiles!works_author_id_fkey(id, username, display_name, avatar_url)
       `
-      *,
-      author:profiles!works_author_id_fkey(id, username, display_name, avatar_url)
-    `
-    )
-    .eq("id", id)
-    .single();
+      )
+      .eq("id", id)
+      .single(),
+  ]);
 
   if (error || !work) {
     notFound();
@@ -37,20 +35,8 @@ export default async function WorkPage({ params }: Props) {
 
   const isOwner = user?.id === work.author_id;
 
-  // Check if user has bookmarked this work
+  // Fetch bookmark status and comments in parallel (only if user is logged in)
   let isBookmarked = false;
-  if (user) {
-    const { data: bookmark } = await supabase
-      .from("bookmarks")
-      .select("user_id")
-      .eq("user_id", user.id)
-      .eq("work_id", id)
-      .maybeSingle();
-
-    isBookmarked = !!bookmark;
-  }
-
-  // Fetch comments with author data (only if user is logged in)
   let comments: Array<{
     id: string;
     body: string;
@@ -65,23 +51,32 @@ export default async function WorkPage({ params }: Props) {
   }> = [];
 
   if (user) {
-    const { data: commentsData } = await supabase
-      .from("work_comments")
-      .select(
+    const [bookmarkResult, commentsResult] = await Promise.all([
+      supabase
+        .from("bookmarks")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .eq("work_id", id)
+        .maybeSingle(),
+      supabase
+        .from("work_comments")
+        .select(
+          `
+          id,
+          body,
+          created_at,
+          author_id,
+          author:profiles!work_comments_author_id_fkey(id, username, display_name, avatar_url)
         `
-        id,
-        body,
-        created_at,
-        author_id,
-        author:profiles!work_comments_author_id_fkey(id, username, display_name, avatar_url)
-      `
-      )
-      .eq("work_id", id)
-      .order("created_at", { ascending: false });
+        )
+        .eq("work_id", id)
+        .order("created_at", { ascending: false }),
+    ]);
 
-    if (commentsData) {
-      // Transform data - Supabase returns author as array
-      comments = commentsData.map((comment) => ({
+    isBookmarked = !!bookmarkResult.data;
+
+    if (commentsResult.data) {
+      comments = commentsResult.data.map((comment) => ({
         ...comment,
         author: Array.isArray(comment.author) ? comment.author[0] : comment.author,
       }));

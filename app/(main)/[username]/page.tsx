@@ -38,7 +38,7 @@ export default async function UserProfilePage({ params }: Props) {
     .from("works")
     .select(`
       *,
-      primary_interest:interests(id, name, slug)
+      primary_interest:interests!works_primary_interest_id_fkey(id, name, slug)
     `)
     .eq("author_id", profile.id)
     .order("created_at", { ascending: false });

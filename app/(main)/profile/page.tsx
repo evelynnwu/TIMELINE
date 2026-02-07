@@ -33,7 +33,7 @@ export default async function ProfilePage({ searchParams }: Props) {
     .from("works")
     .select(`
       *,
-      primary_interest:interests(id, name, slug)
+      primary_interest:interests!works_primary_interest_id_fkey(id, name, slug)
     `)
     .eq("author_id", user.id)
     .order("created_at", { ascending: false });
@@ -52,7 +52,7 @@ export default async function ProfilePage({ searchParams }: Props) {
         image_url,
         created_at,
         author:profiles!works_author_id_fkey(id, username, display_name, avatar_url),
-        primary_interest:interests(id, name, slug)
+        primary_interest:interests!works_primary_interest_id_fkey(id, name, slug)
       )
     `
     )

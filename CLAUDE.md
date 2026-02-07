@@ -202,6 +202,244 @@ The project includes AI-powered code review using Dedalus + Claude that runs:
 
 ---
 
+## Security Best Practices
+
+### 1. Server Actions for Database Writes
+
+**Rule:** NEVER perform user-specific database writes directly from client components.
+
+**❌ WRONG - Client-side DB writes:**
+```typescript
+"use client";
+// BAD: Trusts client-side user ID
+const { data: { user } } = await supabase.auth.getUser();
+await supabase.from("follows").insert({ follower_id: user.id, ... });
+```
+
+**✅ CORRECT - Server actions:**
+```typescript
+// app/(main)/explore/actions.ts
+"use server";
+export async function toggleFollow(targetId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  // Server-side auth verification
+  if (!user) return { success: false };
+  await supabase.from("follows").insert({ follower_id: user.id, ... });
+}
+
+// Component
+"use client";
+import { toggleFollow } from "./actions";
+startTransition(() => {
+  void (async () => {
+    const result = await toggleFollow(profileId);
+  })();
+});
+```
+
+**Why:** Even though RLS policies protect against tampering, server actions make security explicit and prevent confusion.
+
+### 2. ISR Caching on Personalized Pages
+
+**Rule:** NEVER use `export const revalidate` on pages that render user-specific content.
+
+**❌ WRONG - ISR on personalized page:**
+```typescript
+export const revalidate = 60; // One user's data served to others!
+export default async function ExplorePage() {
+  const user = await supabase.auth.getUser();
+  const following = await getFollowing(user.id); // User-specific!
+  return <Feed followingIds={following} />;
+}
+```
+
+**✅ CORRECT - Dynamic rendering:**
+```typescript
+// No revalidate export
+export default async function ExplorePage() {
+  const user = await supabase.auth.getUser();
+  const following = await getFollowing(user.id);
+  return <Feed followingIds={following} />;
+}
+```
+
+**Use ISR only for:**
+- Landing pages
+- Public content (blog posts, documentation)
+- Pages with NO user-specific rendering
+
+---
+
+## Common Errors & Solutions
+
+### 1. PostgREST 300 Error (Ambiguous Foreign Keys)
+
+**Symptom:** Supabase queries return 300 status code, data doesn't load
+
+**Cause:** PostgREST can't determine which foreign key relationship to use when the embedded resource name differs from the table name.
+
+**Solution:** Always specify explicit foreign key names in embedded resources:
+
+```typescript
+// ❌ WRONG - Causes 300 error
+.select(`
+  *,
+  primary_interest:interests(id, name, slug)
+`)
+
+// ✅ CORRECT - Specify foreign key explicitly
+.select(`
+  *,
+  primary_interest:interests!works_primary_interest_id_fkey(id, name, slug)
+`)
+```
+
+**Rule:** When using `relationship_name:table_name(...)` where `relationship_name ≠ table_name`, always add `!foreign_key_name`.
+
+---
+
+### 2. Missing Container for Mapped JSX
+
+**Symptom:** React components don't render, no errors in console
+
+**Cause:** `.map()` returning array of JSX without a parent container
+
+**Solution:** Wrap mapped elements in a container:
+
+```typescript
+// ❌ WRONG - No wrapper
+{items.map((item) => (
+  <div key={item.id}>{item.name}</div>
+))}
+
+// ✅ CORRECT - Wrapped in container
+<div className="space-y-4">
+  {items.map((item) => (
+    <div key={item.id}>{item.name}</div>
+  ))}
+</div>
+```
+
+---
+
+### 3. Wrong Font Import
+
+**Symptom:** Slow loading, font request retries/timeouts
+
+**Cause:** Importing font that doesn't match what's used in code (e.g., importing `Noto_Serif_KR` but using `Inria_Serif` in CSS)
+
+**Solution:**
+1. Check what fonts are actually used: `grep -r "font-family\|font-\[" app/`
+2. Import only those fonts in `app/layout.tsx`
+3. Always add `display: "swap"` and `preload: true` for performance:
+
+```typescript
+import { Inter, Inria_Serif } from "next/font/google";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  preload: true,
+});
+
+const inriaSerif = Inria_Serif({
+  subsets: ["latin"],
+  weight: ["400"],
+  display: "swap",
+  preload: true,
+});
+```
+
+---
+
+### 4. Sequential vs Parallel Queries
+
+**Symptom:** Slow page loads (2-3 seconds)
+
+**Cause:** Database queries running sequentially instead of parallel
+
+**Solution:** Use `Promise.all()` for independent queries:
+
+```typescript
+// ❌ WRONG - Sequential (slow)
+const user = await supabase.auth.getUser();
+const works = await supabase.from("works").select();
+const profiles = await supabase.from("profiles").select();
+// Total: 300ms + 200ms + 150ms = 650ms
+
+// ✅ CORRECT - Parallel (fast)
+const [
+  { data: { user } },
+  { data: works },
+  { data: profiles },
+] = await Promise.all([
+  supabase.auth.getUser(),
+  supabase.from("works").select(),
+  supabase.from("profiles").select(),
+]);
+// Total: max(300ms, 200ms, 150ms) = 300ms
+```
+
+---
+
+### 5. Missing Database Indexes
+
+**Symptom:** Slow queries as data grows
+
+**Cause:** Frequently queried columns without indexes
+
+**Solution:** Add indexes via migrations:
+
+```sql
+-- Create indexes for foreign keys and frequently queried columns
+CREATE INDEX IF NOT EXISTS idx_works_author_id ON works(author_id);
+CREATE INDEX IF NOT EXISTS idx_works_created_at ON works(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_follows_follower_id ON follows(follower_id);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_user_work ON bookmarks(user_id, work_id);
+```
+
+**Rule:** Index all foreign keys and columns used in `WHERE`, `ORDER BY`, or `JOIN` clauses.
+
+---
+
+### 6. Image Optimization
+
+**Symptom:** Large bundle size, slow image loading
+
+**Cause:** Using `<img>` instead of Next.js `<Image>` component
+
+**Solution:** Always use `next/image`:
+
+```typescript
+// ❌ WRONG
+<img src={work.image_url} alt={work.title} />
+
+// ✅ CORRECT
+import Image from 'next/image';
+
+<Image
+  src={work.image_url}
+  alt={work.title}
+  width={800}
+  height={600}
+  className="w-full"
+  priority={false}  // lazy load
+/>
+```
+
+**Note:** Add allowed domains to `next.config.js`:
+```javascript
+images: {
+  remotePatterns: [
+    { protocol: "https", hostname: "*.supabase.co" },
+    { protocol: "https", hostname: "*.amazonaws.com" },
+  ],
+}
+```
+
+---
+
 ## Commands
 
 ```bash
