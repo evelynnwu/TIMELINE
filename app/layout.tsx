@@ -1,11 +1,22 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono, Noto_Serif_KR } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+});
+
+const notoSerifKR = Noto_Serif_KR({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-serif-display",
+});
+
 export const metadata: Metadata = {
-  title: "Artfolio - Showcase Your Human Creativity",
+  title: "*-timeline — Create. Explore. Expand. Conquer.",
   description:
     "An AI-free artist portfolio and social platform. Share your authentic work with a community that values human creativity.",
 };
@@ -17,7 +28,11 @@ export default function RootLayout({
 }): JSX.Element {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body
+        className={`${inter.className} ${jetbrainsMono.variable} ${notoSerifKR.variable}`}
+      >
+        {children}
+      </body>
     </html>
   );
 }
