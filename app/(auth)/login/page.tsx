@@ -12,10 +12,11 @@ function LoginContent(): JSX.Element {
 
   const handleOAuthLogin = async (provider: "google") => {
     const supabase = createClient();
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/oauth/consent?next=${redirect}`,
+        redirectTo: `${siteUrl}/oauth/consent?next=${redirect}`,
       },
     });
   };
