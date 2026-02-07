@@ -29,6 +29,7 @@ export default function NewWorkPage() {
   const [error, setError] = useState<string | null>(null);
   const [interests, setInterests] = useState<Interest[]>([]);
   const [selectedInterests, setSelectedInterests] = useState<Set<string>>(new Set());
+  const [primaryInterest, setPrimaryInterest] = useState<string | null>(null);
 
   // Fetch interests on mount
   useEffect(() => {
@@ -50,8 +51,16 @@ export default function NewWorkPage() {
       const next = new Set(prev);
       if (next.has(interestId)) {
         next.delete(interestId);
+        // Clear primary if deselecting the primary interest
+        if (primaryInterest === interestId) {
+          setPrimaryInterest(null);
+        }
       } else {
         next.add(interestId);
+        // Auto-set as primary if it's the first one
+        if (next.size === 1) {
+          setPrimaryInterest(interestId);
+        }
       }
       return next;
     });
@@ -90,6 +99,7 @@ export default function NewWorkPage() {
     setContent("");
     setError(null);
     setSelectedInterests(new Set());
+    setPrimaryInterest(null);
   };
 
   const handleWorkTypeChange = (newType: WorkType) => {
@@ -124,6 +134,11 @@ export default function NewWorkPage() {
 
     if (selectedInterests.size === 0) {
       setError("Please select at least one interest category");
+      return;
+    }
+
+    if (!primaryInterest) {
+      setError("Please select a primary category by clicking the star icon");
       return;
     }
 
@@ -247,6 +262,18 @@ export default function NewWorkPage() {
           console.error("Failed to clean up uploaded file");
         }
         throw insertError || new Error("Failed to create work");
+      }
+
+      // Update work with primary interest
+      if (primaryInterest) {
+        const { error: primaryError } = await supabase
+          .from("works")
+          .update({ primary_interest_id: primaryInterest })
+          .eq("id", insertedWork.id);
+
+        if (primaryError) {
+          console.error("Failed to save primary interest:", primaryError);
+        }
       }
 
       // Insert work interests
@@ -427,25 +454,40 @@ export default function NewWorkPage() {
           <label className="block text-sm font-medium mb-2">
             Categories
             <span className="text-muted-foreground font-normal ml-1">
-              (select at least 1)
+              (select at least 1, click ⭐ to set primary)
             </span>
           </label>
           <div className="flex flex-wrap gap-2">
             {interests.map((interest) => {
               const isSelected = selectedInterests.has(interest.id);
+              const isPrimary = primaryInterest === interest.id;
               return (
-                <button
-                  key={interest.id}
-                  type="button"
-                  onClick={() => toggleInterest(interest.id)}
-                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
-                    isSelected
-                      ? "bg-foreground text-background"
-                      : "border border-border hover:bg-muted"
-                  }`}
-                >
-                  {interest.name}
-                </button>
+                <div key={interest.id} className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleInterest(interest.id)}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                      isSelected
+                        ? "bg-foreground text-background"
+                        : "border border-border hover:bg-muted"
+                    }`}
+                  >
+                    {interest.name}
+                  </button>
+                  {isSelected && (
+                    <button
+                      type="button"
+                      onClick={() => setPrimaryInterest(interest.id)}
+                      className={`text-lg transition-colors ${
+                        isPrimary ? "opacity-100" : "opacity-30 hover:opacity-60"
+                      }`}
+                      aria-label="Set as primary interest"
+                      title="Set as primary category"
+                    >
+                      {isPrimary ? "⭐" : "☆"}
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>

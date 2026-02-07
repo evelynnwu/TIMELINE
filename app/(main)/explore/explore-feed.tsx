@@ -19,6 +19,11 @@ type Work = {
     display_name: string | null;
     avatar_url: string | null;
   } | null;
+  primary_interest?: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
 };
 
 type ExploreFeedProps = {
@@ -104,15 +109,22 @@ export default function ExploreFeed({ works, followingIds }: ExploreFeedProps) {
           return (
             <article
               key={work.id}
-              className="overflow-hidden rounded-xl bg-white shadow-md"
+              className="overflow-hidden rounded-xl bg-white shadow-md group"
             >
               <Link href={`/work/${work.id}`} className="block">
                 {work.image_url ? (
-                  <img
-                    src={work.image_url}
-                    alt={work.title || "Artwork"}
-                    className="h-80 w-full object-cover hover:opacity-95 transition-opacity"
-                  />
+                  <div className="relative">
+                    <img
+                      src={work.image_url}
+                      alt={work.title || "Artwork"}
+                      className="h-80 w-full object-cover hover:opacity-95 transition-opacity"
+                    />
+                    {(work.primary_interest?.name || work.work_type === "essay") && (
+                      <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-xs font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        {work.primary_interest?.name || "Essay"}
+                      </span>
+                    )}
+                  </div>
                 ) : (
                   <div className="p-6 text-sm text-black/70 hover:bg-black/5 transition-colors">
                     <p className="text-base text-black/80">

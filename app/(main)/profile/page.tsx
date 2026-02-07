@@ -31,7 +31,10 @@ export default async function ProfilePage({ searchParams }: Props) {
   // Fetch the user's works
   const { data: works } = await supabase
     .from("works")
-    .select("*")
+    .select(`
+      *,
+      primary_interest:interests(id, name, slug)
+    `)
     .eq("author_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -48,7 +51,8 @@ export default async function ProfilePage({ searchParams }: Props) {
         work_type,
         image_url,
         created_at,
-        author:profiles!works_author_id_fkey(id, username, display_name, avatar_url)
+        author:profiles!works_author_id_fkey(id, username, display_name, avatar_url),
+        primary_interest:interests(id, name, slug)
       )
     `
     )
@@ -171,9 +175,9 @@ export default async function ProfilePage({ searchParams }: Props) {
                     className="absolute inset-0 w-full h-full object-cover"
                   />
                 )}
-                {work.work_type === "essay" && (
-                  <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-xs font-medium rounded">
-                    Essay
+                {(work.primary_interest?.name || work.work_type === "essay") && (
+                  <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-xs font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    {work.primary_interest?.name || "Essay"}
                   </span>
                 )}
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">

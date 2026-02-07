@@ -64,12 +64,13 @@ export default async function ExplorePage(): Promise<JSX.Element> {
       content,
       created_at,
       author_id,
-      author:profiles!works_author_id_fkey(id, username, display_name, avatar_url)
+      author:profiles!works_author_id_fkey(id, username, display_name, avatar_url),
+      primary_interest:interests(id, name, slug)
     `
     );
 
-  // Filter by matching interests if user has preferences
-  if (matchingWorkIds !== null) {
+  // Filter by matching interests if user has preferences AND there are matches
+  if (matchingWorkIds !== null && matchingWorkIds.length > 0) {
     worksQuery = worksQuery.in("id", matchingWorkIds);
   }
 

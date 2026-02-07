@@ -198,8 +198,8 @@ export default function NewUserPage() {
         throw updateError;
       }
 
-      // Redirect to explore
-      router.push("/explore");
+      // Redirect to interests selection
+      router.push("/newuser/interests");
     } catch (error) {
       console.error("Error saving profile:", error);
       alert("Something went wrong. Please try again.");

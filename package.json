@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit && echo '✓ TypeScript check passed'",
+    "review": "tsx scripts/code-review.ts",
     "test": "vitest",
     "seed": "node scripts/seed.mjs",
     "prepare": "husky"

@@ -11,3 +11,20 @@ if [ $TSC_EXIT_CODE -ne 0 ]; then
 fi
 
 echo "✓ TypeScript type check passed"
+echo ""
+
+# Run AI code review if DEDALUS_API_KEY is set
+if [ -n "$DEDALUS_API_KEY" ] || [ -n "$ANTHROPIC_API_KEY" ]; then
+  echo "Running AI code review..."
+  npx tsx scripts/code-review.ts
+  REVIEW_EXIT_CODE=$?
+
+  if [ $REVIEW_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "❌ Code review failed. Please fix critical issues above before committing."
+    exit 1
+  fi
+else
+  echo "⚠️  Skipping AI code review (DEDALUS_API_KEY not set)"
+  echo "   Set DEDALUS_API_KEY in .env.local to enable automated reviews"
+fi

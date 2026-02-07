@@ -13,10 +13,13 @@ Artfolio is an AI-free artist portfolio and social platform. All uploaded conten
 | Layer        | Choice                         |
 | ------------ | ------------------------------ |
 | Frontend     | Next.js 14 (App Router), TypeScript, Tailwind |
-| Database     | Supabase (PostgreSQL + Auth)   |
-| Storage      | AWS Amplify Storage (S3)       |
+| Auth         | Supabase OAuth (Google)        |
+| Database     | Supabase (PostgreSQL)          |
+| Storage      | AWS Amplify Storage (S3 only)  |
 | AI Detection | Sightengine (images), Dedalus (text) |
 | Deployment   | AWS Amplify                    |
+
+**Important:** Amplify is used ONLY for S3 storage. Auth and database are handled entirely by Supabase.
 
 ---
 
@@ -146,12 +149,64 @@ const { count } = await supabase
 
 ---
 
+## Environment Setup
+
+### Required Environment Variables
+
+Create a `.env.local` file with the following variables:
+
+```bash
+# Site URL (for OAuth redirects)
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Supabase (client-side)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Supabase (server-side)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# AI Detection Services (server-side only)
+SIGHTENGINE_API_USER=your-api-user
+SIGHTENGINE_API_SECRET=your-api-secret
+DEDALUS_API_KEY=your-api-key
+
+# AI Code Review (optional but recommended)
+# Get key from: https://dashboard.dedaluslabs.ai/ or https://console.anthropic.com/
+DEDALUS_API_KEY=your-api-key  # OR use ANTHROPIC_API_KEY
+```
+
+### Automated Code Review
+
+The project includes AI-powered code review using Dedalus + Claude that runs:
+- **Pre-commit hook**: Automatically checks staged files before each commit
+- **Manual review**: Run `npm run review` anytime to check staged changes
+
+**What it checks:**
+- Security vulnerabilities (SQL injection, XSS, auth bypass)
+- RLS policy violations and missing auth checks
+- AI detection bypasses or threshold changes
+- Naming convention violations
+- Missing error handling
+- TypeScript best practices
+
+**Setup:**
+1. Add `DEDALUS_API_KEY` to `.env.local` (see above)
+2. Hooks are automatically configured via Husky
+3. Review runs automatically on `git commit`
+
+**Note:** If `DEDALUS_API_KEY` is not set, the pre-commit hook will skip the AI review with a warning but allow the commit to proceed.
+
+---
+
 ## Commands
 
 ```bash
 npm run dev          # Dev server
 npm run build        # Production build
-npm run typecheck    # TypeScript check (run before testing)
+npm run typecheck    # TypeScript check
+npm run review       # AI code review on staged changes
 npm run test         # Vitest
 npm run seed         # Seed database
 ```
