@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { uploadFile, deleteFile } from "@/lib/amplify/storage";
 
 type WorkType = "image" | "essay";
 
@@ -153,22 +154,24 @@ export default function NewWorkPage() {
 
       setValidating(false);
 
-      // Upload image
+      // Upload image to Amplify Storage
       const fileExt = file.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      const storagePath = `${user.id}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("artworks")
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw uploadError;
+      let uploadResult;
+      try {
+        uploadResult = await uploadFile(file, storagePath);
+      } catch (uploadError) {
+        throw new Error(
+          uploadError instanceof Error
+            ? uploadError.message
+            : "Failed to upload image"
+        );
       }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("artworks").getPublicUrl(filePath);
+      const filePath = uploadResult.path;
+      const publicUrl = uploadResult.url;
 
       // Get image dimensions
       const img = new Image();
@@ -196,7 +199,12 @@ export default function NewWorkPage() {
       const { error: insertError } = await supabase.from("works").insert(workData);
 
       if (insertError) {
-        await supabase.storage.from("artworks").remove([filePath]);
+        // Clean up uploaded file if database insert fails
+        try {
+          await deleteFile(filePath);
+        } catch {
+          console.error("Failed to clean up uploaded file");
+        }
         throw insertError;
       }
 
@@ -334,11 +342,11 @@ export default function NewWorkPage() {
             />
           </div>
 
-          {/* Description (for images) or hidden for essays */}
+          {/* Caption (for images) or hidden for essays */}
           {workType === "image" && (
             <div>
               <label htmlFor="description" className="block text-sm font-medium mb-2">
-                Description (optional)
+                Caption (optional)
               </label>
               <textarea
                 id="description"
@@ -346,8 +354,12 @@ export default function NewWorkPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Tell us about this piece..."
                 rows={3}
+                maxLength={300}
                 className="w-full px-4 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-foreground/20 resize-none"
               />
+              <p className="text-xs text-muted-foreground mt-1 text-right">
+                {description.length}/300
+              </p>
             </div>
           )}
 

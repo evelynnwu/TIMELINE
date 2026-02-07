@@ -4,6 +4,12 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import {
+  uploadFile,
+  deleteFile,
+  isAmplifyStorageUrl,
+  extractPathFromUrl,
+} from "@/lib/amplify/storage";
 
 interface Profile {
   display_name: string | null;
@@ -141,11 +147,15 @@ export default function EditProfilePage() {
 
       // Handle avatar removal
       if (removeAvatar) {
-        // Delete old avatar from storage if it's in our bucket
-        if (profile.avatar_url?.includes("/avatars/")) {
-          const oldPath = profile.avatar_url.split("/avatars/")[1];
+        // Delete old avatar from storage if it's in our Amplify bucket
+        if (profile.avatar_url && isAmplifyStorageUrl(profile.avatar_url)) {
+          const oldPath = extractPathFromUrl(profile.avatar_url);
           if (oldPath) {
-            await supabase.storage.from("avatars").remove([oldPath]);
+            try {
+              await deleteFile(oldPath);
+            } catch {
+              console.error("Failed to delete old avatar");
+            }
           }
         }
         newAvatarUrl = null;
@@ -155,35 +165,33 @@ export default function EditProfilePage() {
       if (avatarFile) {
         setUploadingAvatar(true);
 
-        // Delete old avatar from storage if it's in our bucket
-        if (profile.avatar_url?.includes("/avatars/")) {
-          const oldPath = profile.avatar_url.split("/avatars/")[1];
+        // Delete old avatar from storage if it's in our Amplify bucket
+        if (profile.avatar_url && isAmplifyStorageUrl(profile.avatar_url)) {
+          const oldPath = extractPathFromUrl(profile.avatar_url);
           if (oldPath) {
-            await supabase.storage.from("avatars").remove([oldPath]);
+            try {
+              await deleteFile(oldPath);
+            } catch {
+              console.error("Failed to delete old avatar");
+            }
           }
         }
 
-        // Upload new avatar
+        // Upload new avatar to Amplify Storage
         const fileExt = avatarFile.name.split(".").pop()?.toLowerCase() || "jpg";
-        const fileName = `${user.id}/avatar-${Date.now()}.${fileExt}`;
+        const storagePath = `${user.id}/avatar-${Date.now()}.${fileExt}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from("avatars")
-          .upload(fileName, avatarFile, {
-            cacheControl: "3600",
-            upsert: true,
-          });
-
-        if (uploadError) {
-          throw new Error(`Failed to upload avatar: ${uploadError.message}`);
+        try {
+          const uploadResult = await uploadFile(avatarFile, storagePath);
+          newAvatarUrl = uploadResult.url;
+        } catch (uploadError) {
+          throw new Error(
+            `Failed to upload avatar: ${
+              uploadError instanceof Error ? uploadError.message : "Unknown error"
+            }`
+          );
         }
 
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from("avatars")
-          .getPublicUrl(fileName);
-
-        newAvatarUrl = urlData.publicUrl;
         setUploadingAvatar(false);
       }
 

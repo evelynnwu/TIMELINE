@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import type { User } from "@supabase/supabase-js";
+import { uploadFile } from "@/lib/amplify/storage";
 
 export default function NewUserPage() {
   const router = useRouter();
@@ -163,21 +164,14 @@ export default function NewUserPage() {
       // Upload new avatar if selected
       if (avatarFile) {
         const fileExt = avatarFile.name.split(".").pop();
-        const filePath = `${user.id}/avatar.${fileExt}`;
+        const storagePath = `${user.id}/avatar.${fileExt}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from("artworks")
-          .upload(filePath, avatarFile, { upsert: true });
-
-        if (uploadError) {
+        try {
+          const uploadResult = await uploadFile(avatarFile, storagePath);
+          finalAvatarUrl = uploadResult.url;
+        } catch {
           throw new Error("Failed to upload avatar");
         }
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("artworks").getPublicUrl(filePath);
-
-        finalAvatarUrl = publicUrl;
       }
 
       // Update profile

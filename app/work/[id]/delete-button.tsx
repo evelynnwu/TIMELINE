@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { deleteFile } from "@/lib/amplify/storage";
 
 interface DeleteButtonProps {
   workId: string;
@@ -20,9 +21,21 @@ export function DeleteButton({ workId }: DeleteButtonProps) {
         method: "DELETE",
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || "Failed to delete");
+      }
+
+      // Delete from Amplify Storage if the image is stored there
+      // image_path starts with "media/" for Amplify Storage
+      if (data.image_path && data.image_path.startsWith("media/")) {
+        try {
+          await deleteFile(data.image_path);
+        } catch {
+          // Log but don't fail - DB record is already deleted
+          console.error("Failed to delete image from storage");
+        }
       }
 
       router.push("/profile");

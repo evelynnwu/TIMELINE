@@ -1,6 +1,6 @@
 /**
- * Shared API types between frontend and backend.
- * These should match the Pydantic schemas in the backend.
+ * Shared API types for the application.
+ * Used by components and API routes.
  */
 
 // Common types

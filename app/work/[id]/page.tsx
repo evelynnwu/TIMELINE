@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { DeleteButton } from "./delete-button";
+import { BookmarkButton } from "./bookmark-button";
+import { CommentsSection } from "./comments-section";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -33,6 +35,53 @@ export default async function WorkPage({ params }: Props) {
   }
 
   const isOwner = user?.id === work.author_id;
+
+  // Check if user has bookmarked this work
+  let isBookmarked = false;
+  if (user) {
+    const { data: bookmark } = await supabase
+      .from("bookmarks")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .eq("work_id", id)
+      .maybeSingle();
+
+    isBookmarked = !!bookmark;
+  }
+
+  // Fetch comments with author data (only if user is logged in)
+  let comments: Array<{
+    id: string;
+    body: string;
+    created_at: string;
+    author_id: string;
+    author: {
+      id: string;
+      username: string | null;
+      display_name: string | null;
+      avatar_url: string | null;
+    };
+  }> = [];
+
+  if (user) {
+    const { data: commentsData } = await supabase
+      .from("work_comments")
+      .select(
+        `
+        id,
+        body,
+        created_at,
+        author_id,
+        author:profiles!work_comments_author_id_fkey(id, username, display_name, avatar_url)
+      `
+      )
+      .eq("work_id", id)
+      .order("created_at", { ascending: false });
+
+    if (commentsData) {
+      comments = commentsData as typeof comments;
+    }
+  }
 
   // Format date
   const publishedDate = new Date(work.created_at).toLocaleDateString("en-US", {
@@ -113,7 +162,10 @@ export default async function WorkPage({ params }: Props) {
               )}
               <h1 className="text-3xl font-bold mb-4">{work.title}</h1>
             </div>
-            {isOwner && <DeleteButton workId={work.id} />}
+            <div className="flex items-center gap-2">
+              {user && <BookmarkButton workId={work.id} isBookmarked={isBookmarked} />}
+              {isOwner && <DeleteButton workId={work.id} />}
+            </div>
           </div>
 
           {/* Author info */}
@@ -165,6 +217,15 @@ export default async function WorkPage({ params }: Props) {
               </p>
             ))}
           </article>
+        )}
+
+        {/* Comments section (only for logged-in users) */}
+        {user && (
+          <CommentsSection
+            workId={work.id}
+            currentUserId={user.id}
+            initialComments={comments}
+          />
         )}
 
         {/* Back link */}

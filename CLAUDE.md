@@ -13,12 +13,11 @@ The core philosophy: **empower human creators, not replace them.**
 | Layer        | Choice                               | Notes                                     |
 | ------------ | ------------------------------------ | ----------------------------------------- |
 | Frontend     | Next.js 14 (App Router)              | TypeScript, Tailwind, shadcn/ui           |
-| Backend      | FastAPI (Python 3.11+)               | Async-first, Pydantic v2                  |
-| Database     | Supabase (PostgreSQL 15)             | Also handles auth, storage, realtime      |
+| Database     | Supabase (PostgreSQL 15)             | Auth + realtime                           |
 | Auth         | Supabase Auth                        | OAuth providers (Google, GitHub, Discord) |
-| Storage      | Supabase Storage                     | Images only, with CDN                     |
+| Storage      | AWS Amplify Storage (S3)             | Images/media via Amplify Gen 2            |
 | AI Detection | Sightengine (images), Dedalus/Claude (text) | Pre-upload validation                     |
-| Deployment   | Vercel (FE), Railway (BE)            | Future: containerize BE                   |
+| Deployment   | AWS Amplify                          | Auto-deploy from Git                      |
 
 ---
 
@@ -26,21 +25,21 @@ The core philosophy: **empower human creators, not replace them.**
 
 ### 1. Start Simple, Design for Change
 
-- Begin with monolithic FastAPI app — no microservices yet
+- Using Next.js API routes for backend logic (no separate backend yet)
 - Use **service layer abstraction** so implementations can be swapped
-- Every external dependency gets a wrapper class (AI detectors, storage, email)
+- Every external dependency gets a wrapper class (AI detectors, storage)
 
 ### 2. Vertical Slices Over Horizontal Layers
 
 - Organize by **feature**, not by technical layer
-- Each feature folder contains its routes, services, and schemas
-- Shared utilities live in `core/`
+- Each feature folder contains its routes and components
+- Shared utilities live in `lib/`
 
 ### 3. Database as Source of Truth
 
-- Business logic lives in Python, not SQL functions
-- Use Supabase RLS for authorization, but validate in backend too
-- Migrations via Alembic (not Supabase dashboard clicks)
+- Business logic lives in API routes and client components
+- Use Supabase RLS for authorization, validate in API routes too
+- Migrations via SQL files in `supabase/migrations/`
 
 ### 4. Fail Fast on AI Detection
 
@@ -48,11 +47,11 @@ The core philosophy: **empower human creators, not replace them.**
 - Rejected uploads should never touch storage or database
 - Store detection scores for audit trail
 
-### 5. API-First Design
+### 5. Full-Stack Next.js
 
-- Backend is a pure JSON API — no server-rendered HTML
-- Frontend could be swapped for mobile app later
-- Document everything with OpenAPI (FastAPI does this automatically)
+- API routes handle server-side logic
+- Server components for data fetching
+- Client components marked with `'use client'`
 
 ---
 
@@ -63,8 +62,14 @@ artfolio/
 ├── CLAUDE.md                    # You are here
 ├── README.md
 │
+├── amplify/                     # AWS Amplify Gen 2 backend
+│   ├── auth/resource.ts         # Amplify Auth config
+│   ├── data/resource.ts         # Amplify Data config
+│   ├── storage/resource.ts      # Amplify Storage (S3) config
+│   └── backend.ts               # Backend definition
+│
 ├── app/                         # Next.js App Router
-│   ├── layout.tsx               # Root layout
+│   ├── layout.tsx               # Root layout (with AmplifyProvider)
 │   ├── page.tsx                 # Landing page (/)
 │   │
 │   ├── (auth)/                  # Auth group (no layout)
@@ -74,8 +79,10 @@ artfolio/
 │   ├── api/
 │   │   ├── validate-image/
 │   │   │   └── route.ts         # POST - Sightengine AI detection for images
-│   │   └── validate-text/
-│   │       └── route.ts         # POST - Dedalus/Claude AI detection for essays
+│   │   ├── validate-text/
+│   │   │   └── route.ts         # POST - Dedalus/Claude AI detection for essays
+│   │   └── works/[id]/
+│   │       └── route.ts         # DELETE - Work deletion API
 │   │
 │   ├── auth/
 │   │   └── signout/
@@ -94,27 +101,41 @@ artfolio/
 │   ├── upload/
 │   │   └── page.tsx             # Upload artwork (with AI detection)
 │   │
+│   ├── work/[id]/
+│   │   ├── page.tsx             # Work detail page (essays, images)
+│   │   ├── delete-button.tsx    # Delete work client component
+│   │   └── comments-section.tsx # Comments (WIP)
+│   │
 │   └── profile/
 │       ├── page.tsx             # Own profile (protected)
+│       ├── edit/
+│       │   └── page.tsx         # Edit profile page
 │       └── [username]/
 │           ├── page.tsx         # Public profile view
 │           └── follow-button.tsx # Follow/unfollow client component
 │
 ├── components/
+│   ├── providers/
+│   │   └── amplify-provider.tsx # Amplify initialization wrapper
 │   └── ui/                      # shadcn/ui primitives
 │
 ├── lib/
+│   ├── amplify/
+│   │   ├── config.ts            # Amplify configuration
+│   │   └── storage.ts           # Amplify Storage utilities
 │   ├── supabase/
 │   │   ├── client.ts            # Browser Supabase client
 │   │   ├── server.ts            # Server Supabase client + getUser/getSession
 │   │   └── middleware.ts        # Route protection middleware
+│   ├── api/
+│   │   └── types.ts             # Shared API types
 │   └── utils.ts
 │
+├── types/
+│   └── index.ts                 # Global type definitions
+│
 ├── supabase/
-│   └── migrations/
-│       ├── 00001_create_profiles.sql      # Profiles table + RLS + triggers
-│       ├── 00002_create_storage_and_works.sql  # Storage bucket + works table
-│       └── 00003_add_follows_likes_bookmarks.sql  # Social features
+│   └── migrations/              # Database migrations
 │
 ├── middleware.ts                # Next.js middleware (calls updateSession)
 ├── package.json
@@ -126,45 +147,7 @@ artfolio/
 
 ## Coding Conventions
 
-### Python (Backend)
-
-```python
-# Use async everywhere
-async def get_work(work_id: UUID) -> Work:
-    ...
-
-# Type hints are mandatory
-def calculate_score(likes: int, age_hours: float) -> float:
-    ...
-
-# Pydantic for all data validation
-class CreateWorkRequest(BaseModel):
-    title: str = Field(..., min_length=1, max_length=200)
-    work_type: WorkType
-    description: str | None = None
-
-# Dependency injection for services
-@router.post("/works")
-async def create_work(
-    request: CreateWorkRequest,
-    current_user: User = Depends(get_current_user),
-    work_service: WorkService = Depends(get_work_service),
-    ai_detector: AIDetector = Depends(get_ai_detector),
-):
-    ...
-
-# Custom exceptions with HTTP mapping
-class AIDetectionFailed(AppException):
-    status_code = 400
-    error_code = "AI_CONTENT_DETECTED"
-
-# Services return domain objects, not dicts
-class WorkService:
-    async def create(self, author_id: UUID, data: CreateWorkRequest) -> Work:
-        ...
-```
-
-### TypeScript (Frontend)
+### TypeScript
 
 ```typescript
 // Explicit return types on functions
@@ -199,122 +182,68 @@ const { data: works, isLoading } = useQuery({
 
 | Thing            | Convention         | Example                          |
 | ---------------- | ------------------ | -------------------------------- |
-| Python files     | snake_case         | `ai_detection.py`                |
-| Python classes   | PascalCase         | `WorkService`                    |
-| Python functions | snake_case         | `get_current_user`               |
 | TS/React files   | kebab-case         | `work-card.tsx`                  |
 | React components | PascalCase         | `WorkCard`                       |
+| Utility files    | kebab-case         | `storage.ts`                     |
 | Database tables  | snake_case, plural | `works`, `community_members`     |
-| API endpoints    | kebab-case, plural | `/api/works`, `/api/communities` |
+| API endpoints    | kebab-case, plural | `/api/works`, `/api/validate-image` |
 | Environment vars | SCREAMING_SNAKE    | `SIGHTENGINE_API_KEY`            |
 
 ---
 
-## Service Layer Pattern
+## Utility Patterns
 
-All external dependencies are wrapped in service classes with abstract base protocols. This allows swapping implementations (e.g., mock for testing, different provider later).
+### Amplify Storage Wrapper
 
-```python
-# services/ai_detection/base.py
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
+External dependencies are wrapped in utility functions for easy swapping and testing.
 
-@dataclass
-class DetectionResult:
-    passed: bool
-    confidence: float  # 0-1, how confident we are it's human-made
-    raw_score: float   # Provider-specific score
-    provider: str
-    details: dict
+```typescript
+// lib/amplify/storage.ts
+import { uploadData, getUrl, remove } from 'aws-amplify/storage';
 
-class AIDetector(ABC):
-    """Protocol for AI content detection services."""
+export interface UploadResult {
+  path: string;
+  url: string;
+}
 
-    @abstractmethod
-    async def check_image(self, image_bytes: bytes, filename: str) -> DetectionResult:
-        """Check if an image is AI-generated."""
-        ...
+export async function uploadFile(
+  file: File,
+  path: string,
+  onProgress?: (progress: number) => void
+): Promise<UploadResult> {
+  const fullPath = `media/${path}`;
 
-    @abstractmethod
-    async def check_text(self, text: str) -> DetectionResult:
-        """Check if text is AI-generated."""
-        ...
+  const result = await uploadData({
+    path: fullPath,
+    data: file,
+    options: {
+      contentType: file.type,
+      onProgress: (event) => {
+        if (onProgress && event.totalBytes) {
+          onProgress((event.transferredBytes / event.totalBytes) * 100);
+        }
+      },
+    },
+  }).result;
 
-# services/ai_detection/sightengine.py
-class SightengineDetector(AIDetector):
-    """Sightengine implementation for image detection."""
+  const urlResult = await getUrl({ path: result.path });
 
-    AI_THRESHOLD = 0.75  # Reject if ai_generated > this
+  return {
+    path: result.path,
+    url: urlResult.url.toString(),
+  };
+}
 
-    async def check_image(self, image_bytes: bytes, filename: str) -> DetectionResult:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.sightengine.com/1.0/check.json",
-                data={
-                    "models": "genai",
-                    "api_user": self.api_user,
-                    "api_secret": self.api_secret,
-                },
-                files={"media": (filename, image_bytes)}
-            )
-            data = response.json()
-            ai_score = data.get("type", {}).get("ai_generated", 0)
-
-            return DetectionResult(
-                passed=ai_score < self.AI_THRESHOLD,
-                confidence=1 - ai_score,
-                raw_score=ai_score,
-                provider="sightengine",
-                details=data,
-            )
-
-    async def check_text(self, text: str) -> DetectionResult:
-        raise NotImplementedError("Sightengine doesn't support text detection")
-
-# services/ai_detection/gptzero.py
-class GPTZeroDetector(AIDetector):
-    """GPTZero implementation for text detection."""
-
-    AI_THRESHOLD = 0.65  # Reject if completely_generated_prob > this
-
-    async def check_text(self, text: str) -> DetectionResult:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.gptzero.me/v2/predict/text",
-                headers={"x-api-key": self.api_key},
-                json={"document": text}
-            )
-            data = response.json()
-            ai_prob = data.get("documents", [{}])[0].get("completely_generated_prob", 0)
-
-            return DetectionResult(
-                passed=ai_prob < self.AI_THRESHOLD,
-                confidence=1 - ai_prob,
-                raw_score=ai_prob,
-                provider="gptzero",
-                details=data,
-            )
-
-    async def check_image(self, image_bytes: bytes, filename: str) -> DetectionResult:
-        raise NotImplementedError("GPTZero doesn't support image detection")
-
-# Composite detector that routes to the right provider
-class ContentDetector:
-    def __init__(self, image_detector: AIDetector, text_detector: AIDetector):
-        self.image_detector = image_detector
-        self.text_detector = text_detector
-
-    async def check(
-        self,
-        content_type: Literal["image", "text"],
-        content: bytes | str,
-        filename: str | None = None,
-    ) -> DetectionResult:
-        if content_type == "image":
-            return await self.image_detector.check_image(content, filename)
-        else:
-            return await self.text_detector.check_text(content)
+export async function deleteFile(path: string): Promise<void> {
+  await remove({ path });
+}
 ```
+
+### AI Detection (API Routes)
+
+AI detection is handled directly in API routes:
+- `/api/validate-image` - Sightengine for image AI detection
+- `/api/validate-text` - Dedalus (Claude) for text AI detection
 
 ---
 
@@ -322,17 +251,14 @@ class ContentDetector:
 
 ### Migrations
 
-Use Alembic for migrations. Never modify the database through the Supabase dashboard in production.
+Store SQL migrations in `supabase/migrations/` with numbered prefixes.
 
 ```bash
-# Create a new migration
-alembic revision --autogenerate -m "add_bookmarks_table"
+# Create a new migration file
+touch supabase/migrations/00005_add_new_table.sql
 
-# Run migrations
-alembic upgrade head
-
-# Rollback one version
-alembic downgrade -1
+# Apply via Supabase Dashboard or CLI
+supabase db push
 ```
 
 ### Common Patterns
@@ -417,104 +343,52 @@ using (auth.uid() = author_id);
 
 Use cursor-based pagination for feeds (not offset). More efficient and handles real-time inserts.
 
-```python
-@router.get("/feed/following")
-async def get_following_feed(
-    cursor: str | None = None,
-    limit: int = Query(default=20, le=50),
-):
-    # Cursor is base64-encoded (created_at, id) tuple
-    ...
-```
-
-### Versioning
-
-No URL versioning yet. When breaking changes are needed, use header-based versioning:
-
-```
-Accept: application/json; version=2
+```typescript
+// In server component or API route
+const { data, error } = await supabase
+  .from('works')
+  .select('*')
+  .order('created_at', { ascending: false })
+  .limit(20);
 ```
 
 ---
 
 ## Error Handling
 
-```python
-# core/exceptions.py
-class AppException(Exception):
-    status_code: int = 500
-    error_code: str = "INTERNAL_ERROR"
-    message: str = "An unexpected error occurred"
+API routes return consistent error responses:
 
-    def __init__(self, message: str | None = None, details: dict | None = None):
-        self.message = message or self.message
-        self.details = details or {}
+```typescript
+// In API route
+if (!user) {
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+}
 
-class NotFound(AppException):
-    status_code = 404
-    error_code = "NOT_FOUND"
-
-class Unauthorized(AppException):
-    status_code = 401
-    error_code = "UNAUTHORIZED"
-
-class AIContentDetected(AppException):
-    status_code = 400
-    error_code = "AI_CONTENT_DETECTED"
-    message = "This content appears to be AI-generated and cannot be uploaded."
-
-# Registered as exception handler in main.py
-@app.exception_handler(AppException)
-async def app_exception_handler(request: Request, exc: AppException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "error": {
-                "code": exc.error_code,
-                "message": exc.message,
-                "details": exc.details,
-            }
-        },
-    )
+if (!validateResult.passed) {
+  return NextResponse.json({
+    error: "AI_CONTENT_DETECTED",
+    message: "This content appears to be AI-generated",
+    score: validateResult.score,
+  }, { status: 400 });
+}
 ```
 
 ---
 
 ## Testing Strategy
 
-### Backend
-
-```python
-# tests/conftest.py
-@pytest.fixture
-async def test_client():
-    """FastAPI test client with test database."""
-    ...
-
-@pytest.fixture
-def mock_ai_detector():
-    """Mock AI detector that always passes."""
-    detector = Mock(spec=AIDetector)
-    detector.check_image.return_value = DetectionResult(
-        passed=True, confidence=0.95, raw_score=0.05, provider="mock", details={}
-    )
-    return detector
-
-# tests/test_works.py
-async def test_upload_rejects_ai_image(test_client, mock_ai_detector):
-    mock_ai_detector.check_image.return_value = DetectionResult(
-        passed=False, confidence=0.15, raw_score=0.85, provider="mock", details={}
-    )
-
-    response = await test_client.post("/works", ...)
-
-    assert response.status_code == 400
-    assert response.json()["error"]["code"] == "AI_CONTENT_DETECTED"
-```
-
-### Frontend
-
 Use Vitest + React Testing Library. Mock API calls with MSW.
+
+```typescript
+// Example test
+import { render, screen } from '@testing-library/react';
+import { WorkCard } from '@/components/work-card';
+
+test('renders work title', () => {
+  render(<WorkCard work={mockWork} />);
+  expect(screen.getByText('Test Artwork')).toBeInTheDocument();
+});
+```
 
 ---
 
@@ -557,13 +431,13 @@ We're in **Phase 1**. Focus on:
 
 1. ✅ Project structure setup
 2. ✅ Supabase project + initial schema
-3. ⬜ FastAPI app skeleton with health check (deferred - using Next.js API routes for now)
-4. ✅ Supabase Auth integration (Google OAuth)
-5. ⬜ Basic profile CRUD (read done, update pending)
-6. ✅ Next.js app with auth flow
-7. ✅ Image upload with AI detection
-8. ✅ Follow system
-9. ✅ Feed with follow prioritization
+3. ✅ Supabase Auth integration (Google OAuth)
+4. ✅ Basic profile CRUD (read + update)
+5. ✅ Next.js app with auth flow
+6. ✅ Image upload with AI detection
+7. ✅ Follow system
+8. ✅ Feed with follow prioritization
+9. ✅ AWS Amplify Storage migration
 
 **Completed in this phase:**
 
@@ -587,11 +461,14 @@ We're in **Phase 1**. Focus on:
 - Work detail page at `/work/[id]` for viewing essays and images
 - Text AI detection via Dedalus (Claude Opus 4.5) - rejects AI-generated essays
 - "+ New" button replaces "Upload" across app
+- Profile edit page at `/profile/edit`
+- AWS Amplify Storage for all media uploads (artworks, avatars)
+- Work deletion with storage cleanup
 
 **Do not build yet:**
 
 - Communities
-- Comments
+- Comments (schema exists, UI pending)
 - Notifications
 - Search
 - Likes/bookmarks UI (schema exists)
@@ -608,16 +485,15 @@ npm run dev                              # Run dev server
 npm run build                            # Production build
 npm run lint                             # Lint
 
-# Supabase (when using local instance)
+# AWS Amplify
+npx ampx sandbox                         # Start local Amplify backend
+npx ampx sandbox delete                  # Clean up sandbox resources
+
+# Supabase
 supabase start                           # Start local instance
 supabase stop                            # Stop local instance
-supabase db reset                        # Reset + migrate + seed
-supabase gen types typescript --local    # Generate TS types from schema
-
-# Future: Backend (when FastAPI is added)
-# uvicorn app.main:app --reload          # Run dev server
-# pytest                                   # Run tests
-# alembic upgrade head                     # Run migrations
+supabase db push                         # Push migrations
+supabase gen types typescript --local    # Generate TS types
 ```
 
 ---
@@ -641,6 +517,7 @@ supabase gen types typescript --local    # Generate TS types from schema
 | 2026-02-06 | 75% threshold for AI rejection     | Balance false positives vs letting AI through |
 | 2026-02-06 | Dedalus + Claude Opus for text     | LLM-based detection, no GPTZero API needed    |
 | 2026-02-06 | 65% threshold for text AI rejection | Lower threshold for text vs images            |
+| 2026-02-07 | Amplify Storage over Supabase Storage | Consolidate on AWS, reduce external deps     |
 
 ---
 
@@ -649,10 +526,11 @@ supabase gen types typescript --local    # Generate TS types from schema
 - [x] What OAuth providers beyond Google? → GitHub and Discord buttons exist, need to configure in Supabase Dashboard
 - [x] New user onboarding flow? → `/newuser` page after first OAuth login
 - [x] How to handle Google profile image loading? → `referrerPolicy="no-referrer"` on img tags
+- [x] Profile edit page implementation? → `/profile/edit` page complete
+- [x] Storage provider? → Migrated from Supabase Storage to AWS Amplify Storage (S3)
 - [ ] Storage limits per user?
 - [ ] Appeals process for false positive AI detection?
 - [ ] Monetization model? (affects schema for subscriptions)
 - [ ] Mobile app timeline? (affects API design)
-- [ ] Profile edit page implementation?
-- [ ] When to add FastAPI backend vs continue with Next.js API routes?
 - [ ] Likes/bookmarks UI implementation?
+- [ ] Comments UI implementation?

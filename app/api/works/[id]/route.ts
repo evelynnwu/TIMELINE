@@ -37,18 +37,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  // Delete from storage if image exists
-  if (work.image_path) {
-    const { error: storageError } = await supabase.storage
-      .from("artworks")
-      .remove([work.image_path]);
-
-    if (storageError) {
-      console.error("Failed to delete image from storage:", storageError);
-      // Continue with database deletion even if storage fails
-    }
-  }
-
   // Delete from database
   const { error: deleteError } = await supabase
     .from("works")
@@ -63,5 +51,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  return NextResponse.json({ success: true });
+  // Return success with image_path so client can delete from Amplify Storage
+  // Note: Storage deletion is now handled client-side with Amplify SDK
+  return NextResponse.json({
+    success: true,
+    image_path: work.image_path,
+  });
 }

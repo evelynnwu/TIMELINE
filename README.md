@@ -9,8 +9,9 @@ An AI-free artist portfolio and social platform. Showcase your human creativity.
 - **Styling**: Tailwind CSS
 - **Database**: Supabase (PostgreSQL)
 - **Auth**: Supabase Auth
-- **AI Detection**: Sightengine (images), GPTZero (text)
-- **Deployment**: Vercel
+- **Storage**: AWS Amplify Storage (S3)
+- **AI Detection**: Sightengine (images), Dedalus/Claude (text)
+- **Deployment**: AWS Amplify
 
 ## Getting Started
 
@@ -25,16 +26,17 @@ Visit `http://localhost:3000`
 ## Project Structure
 
 ```
+├── amplify/              # AWS Amplify backend config
 ├── app/
-│   ├── api/              # API routes (backend)
+│   ├── api/              # API routes (validation, works)
 │   ├── (auth)/           # Auth pages
-│   └── (main)/           # Authenticated pages
+│   └── ...               # Feature pages
 ├── components/
 ├── lib/
-│   ├── api/              # API client
-│   ├── server/           # Server-only (AI detection, etc.)
-│   └── supabase/
-└── supabase/             # DB config & migrations
+│   ├── amplify/          # Amplify Storage utilities
+│   ├── api/              # Shared types
+│   └── supabase/         # Supabase clients
+└── supabase/             # DB migrations
 ```
 
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/evelynnwu/TIMELINE?utm_source=oss&utm_medium=github&utm_campaign=evelynnwu%2FTIMELINE&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
