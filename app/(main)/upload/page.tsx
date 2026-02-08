@@ -37,8 +37,7 @@ export default function NewWorkPage() {
   const [validating, setValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
-  const [selectedThreads, setSelectedThreads] = useState<Set<string>>(new Set());
-  const [primaryThread, setPrimaryThread] = useState<string | null>(null);
+  const [selectedThread, setSelectedThread] = useState<string | null>(null);
 
   // Fetch threads on mount
   useEffect(() => {
@@ -55,22 +54,8 @@ export default function NewWorkPage() {
     fetchThreads();
   }, [supabase]);
 
-  function toggleThread(threadId: string) {
-    setSelectedThreads((prev) => {
-      const next = new Set(prev);
-      if (next.has(threadId)) {
-        next.delete(threadId);
-        if (primaryThread === threadId) {
-          setPrimaryThread(null);
-        }
-      } else {
-        next.add(threadId);
-        if (next.size === 1) {
-          setPrimaryThread(threadId);
-        }
-      }
-      return next;
-    });
+  function selectThread(threadId: string) {
+    setSelectedThread((prev) => (prev === threadId ? null : threadId));
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,8 +116,7 @@ export default function NewWorkPage() {
     setTitle("");
     setDescription("");
     setError(null);
-    setSelectedThreads(new Set());
-    setPrimaryThread(null);
+    setSelectedThread(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -160,13 +144,8 @@ export default function NewWorkPage() {
       return;
     }
 
-    if (selectedThreads.size === 0) {
-      setError("Please select at least one category");
-      return;
-    }
-
-    if (!primaryThread) {
-      setError("Please select a primary category by clicking the star icon");
+    if (!selectedThread) {
+      setError("Please select a category");
       return;
     }
 
@@ -334,31 +313,24 @@ export default function NewWorkPage() {
         throw insertError || new Error("Failed to create work");
       }
 
-      // Update work with primary thread
-      if (primaryThread) {
+      // Update work with selected thread as primary
+      if (selectedThread) {
         const { error: primaryError } = await supabase
           .from("works")
-          .update({ primary_thread_id: primaryThread })
+          .update({ primary_thread_id: selectedThread })
           .eq("id", insertedWork.id);
 
         if (primaryError) {
           console.error("Failed to save primary thread:", primaryError);
         }
-      }
 
-      // Insert work-thread associations
-      if (selectedThreads.size > 0) {
-        const workThreads = Array.from(selectedThreads).map((threadId) => ({
-          work_id: insertedWork.id,
-          thread_id: threadId,
-        }));
-
+        // Insert work-thread association
         const { error: threadsError } = await supabase
           .from("work_threads")
-          .insert(workThreads);
+          .insert({ work_id: insertedWork.id, thread_id: selectedThread });
 
         if (threadsError) {
-          console.error("Failed to save work threads:", threadsError);
+          console.error("Failed to save work thread:", threadsError);
         }
       }
 
@@ -586,45 +558,30 @@ export default function NewWorkPage() {
           </p>
         </div>
 
-        {/* Interest categories */}
+        {/* Category selection */}
         <div>
           <label className="block text-sm font-medium mb-2">
-            Categories
+            Category
             <span className="text-muted-foreground font-normal ml-1">
-              (select at least 1, click ⭐ to set primary)
+              (select one)
             </span>
           </label>
           <div className="flex flex-wrap gap-2">
             {threads.map((thread) => {
-              const isSelected = selectedThreads.has(thread.id);
-              const isPrimary = primaryThread === thread.id;
+              const isSelected = selectedThread === thread.id;
               return (
-                <div key={thread.id} className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => toggleThread(thread.id)}
-                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
-                      isSelected
-                        ? "bg-foreground text-background"
-                        : "border border-border hover:bg-muted"
-                    }`}
-                  >
-                    {thread.name}
-                  </button>
-                  {isSelected && (
-                    <button
-                      type="button"
-                      onClick={() => setPrimaryThread(thread.id)}
-                      className={`text-lg transition-colors ${
-                        isPrimary ? "opacity-100" : "opacity-30 hover:opacity-60"
-                      }`}
-                      aria-label="Set as primary thread"
-                      title="Set as primary category"
-                    >
-                      {isPrimary ? "⭐" : "☆"}
-                    </button>
-                  )}
-                </div>
+                <button
+                  key={thread.id}
+                  type="button"
+                  onClick={() => selectThread(thread.id)}
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                    isSelected
+                      ? "bg-foreground text-background"
+                      : "border border-border hover:bg-muted"
+                  }`}
+                >
+                  {thread.name}
+                </button>
               );
             })}
           </div>
@@ -645,7 +602,7 @@ export default function NewWorkPage() {
             validating ||
             (workType === "image" && files.length === 0) ||
             (workType === "essay" && content.trim().length < 100) ||
-            selectedThreads.size === 0
+            !selectedThread
           }
           className="w-full py-3 bg-foreground text-background rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
         >
